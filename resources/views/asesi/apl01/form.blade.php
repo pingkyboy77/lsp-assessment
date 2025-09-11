@@ -962,9 +962,6 @@
                     <h5>Dengan ini, saya menyatakan bahwa saya telah menuliskan nama lengkap dengan benar. Nama tersebut
                         dapat digunakan untuk pencetakan sertifikat kompetensi apabila saya dinyatakan kompeten dalam proses
                         asesmen ini.</h5>
-                </div>
-
-                <div class="agreement-section">
                     <label class="checkbox-option agreement-option">
                         <input type="checkbox" name="pernyataan_benar" value="1"
                             {{ old('pernyataan_benar', optional($existingApl)->pernyataan_benar) ? 'checked' : '' }} required>
