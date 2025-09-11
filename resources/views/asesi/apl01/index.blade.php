@@ -23,101 +23,52 @@
     <!-- Header Section -->
     <div class="card-header-custom d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="mb-1">Pra Assessment</h2>
-            <p class="text-muted mb-0">Kelola formulir Pra Assessment</p>
+            <h4 class="m-0">INBOX</h4>
         </div>
-        {{-- <div class="d-flex gap-2">
-            <a href="{{ route('asesi.skema-sertifikasi.index') }}" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Buat APL 01 Baru
-            </a>
-            <button class="btn btn-outline-secondary" onclick="location.reload()">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
-            </button>
-        </div> --}}
     </div>
-
-    <!-- Statistics Cards -->
-    {{-- <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card border-0 bg-primary bg-opacity-10">
-                <div class="card-body text-center">
-                    <i class="bi bi-file-earmark-text text-primary display-6"></i>
-                    <h4 class="text-primary mb-0">{{ $stats['total'] ?? 0 }}</h4>
-                    <small class="text-muted">Total APL</small>
+<div class="card m-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="statusFilter" class="form-label">Filter Status</label>
+                <select class="form-select" id="statusFilter" name="status">
+                    <option value="">Semua Status</option>
+                    <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
+                    <option value="submitted" {{ request('status') == 'submitted' ? 'selected' : '' }}>Submitted</option>
+                    <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Confirm</option>
+                    <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
+                    <option value="open" {{ request('status') == 'open' ? 'selected' : '' }}>Re Open</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label for="searchInput" class="form-label">Cari APL</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="searchInput" name="search" 
+                           placeholder="Cari berdasarkan nama, nomor APL, atau skema..." 
+                           value="{{ request('search') }}">
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                        <i class="bi bi-x"></i>
+                    </button>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 bg-warning bg-opacity-10">
-                <div class="card-body text-center">
-                    <i class="bi bi-pencil-square text-warning display-6"></i>
-                    <h4 class="text-warning mb-0">{{ $stats['draft'] ?? 0 }}</h4>
-                    <small class="text-muted">Draft</small>
+            <div class="col-md-3">
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" id="applyFilter">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="resetFilter">
+                        <i class="bi bi-arrow-clockwise"></i> Reset
+                    </button>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 bg-info bg-opacity-10">
-                <div class="card-body text-center">
-                    <i class="bi bi-hourglass-split text-info display-6"></i>
-                    <h4 class="text-info mb-0">{{ $stats['submitted'] ?? 0 }}</h4>
-                    <small class="text-muted">Menunggu Review</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 bg-success bg-opacity-10">
-                <div class="card-body text-center">
-                    <i class="bi bi-check-circle text-success display-6"></i>
-                    <h4 class="text-success mb-0">{{ $stats['approved'] ?? 0 }}</h4>
-                    <small class="text-muted">Disetujui</small>
-                </div>
-            </div>
-        </div>
-    </div> --}}
-
-    <!-- Quick Actions -->
-    {{-- @if($apls->where('status', 'open')->count() > 0)
-    <div class="card mb-4 border-warning">
-        <div class="card-header bg-warning bg-opacity-25">
-            <h6 class="mb-0 text-warning">
-                <i class="bi bi-exclamation-triangle-fill"></i> 
-                Form Terbuka - Perlu Dilengkapi
-            </h6>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                @foreach($apls->where('status', 'open') as $openApl)
-                <div class="col-md-6 mb-3">
-                    <div class="alert alert-warning mb-0">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>{{ $openApl->certificationScheme->nama ?? 'Tidak ada skema' }}</strong>
-                                <br>
-                                <small class="text-muted">
-                                    Dibuka kembali pada: {{ $openApl->reopened_at?->format('d F Y H:i') ?? '-' }}
-                                </small>
-                                @if($openApl->reopen_notes)
-                                <br>
-                                <small class="text-warning">Catatan: {{ $openApl->reopen_notes }}</small>
-                                @endif
-                            </div>
-                            <a href="{{ route('asesi.apl01.edit', $openApl) }}" class="btn btn-warning btn-sm">
-                                <i class="bi bi-pencil"></i> Lanjutkan
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                @endforeach
             </div>
         </div>
     </div>
-    @endif --}}
+</div>
 
     <!-- APL 01 List -->
     <div class="card m-3">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
-            <h6 class="mb-0">List Task</h6>
+            {{-- <h6 class="mb-0">List Task</h6> --}}
         </div>
         <div class="card-body p-0">
             @if($apls->count() > 0)
@@ -186,56 +137,6 @@
                                         </div>
                                     @endif
                                 </td>
-                                {{-- <td>
-                                    @php
-                                        $progress = 0;
-                                        $progressText = 'Belum dimulai';
-                                        $progressColor = 'secondary';
-                                        
-                                        switch($apl->status) {
-                                            case 'draft':
-                                                $progress = 25;
-                                                $progressText = 'Draft';
-                                                $progressColor = 'warning';
-                                                break;
-                                            case 'open':
-                                                $progress = 30;
-                                                $progressText = 'Perlu dilengkapi';
-                                                $progressColor = 'warning';
-                                                break;
-                                            case 'submitted':
-                                                $progress = 50;
-                                                $progressText = 'Menunggu review';
-                                                $progressColor = 'info';
-                                                break;
-                                            case 'review':
-                                                $progress = 75;
-                                                $progressText = 'Sedang direview';
-                                                $progressColor = 'primary';
-                                                break;
-                                            case 'approved':
-                                                $progress = 100;
-                                                $progressText = 'Selesai';
-                                                $progressColor = 'success';
-                                                break;
-                                            case 'rejected':
-                                                $progress = 40;
-                                                $progressText = 'Perlu perbaikan';
-                                                $progressColor = 'danger';
-                                                break;
-                                            case 'returned':
-                                                $progress = 35;
-                                                $progressText = 'Dikembalikan';
-                                                $progressColor = 'warning';
-                                                break;
-                                        }
-                                    @endphp
-                                    <div class="small mb-1">{{ $progressText }}</div>
-                                    <div class="progress" style="height: 6px;">
-                                        <div class="progress-bar bg-{{ $progressColor }}" 
-                                             style="width: {{ $progress }}%"></div>
-                                    </div>
-                                </td> --}}
                                 <td>
                                     @if($apl->reviewer)
                                         <div class="small">
@@ -251,12 +152,6 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <!-- View Button -->
-                                        {{-- <a href="{{ route('asesi.apl01.show', $apl) }}" 
-                                           class="btn btn-outline-primary btn-sm" 
-                                           title="Lihat Detail">
-                                            <i class="bi bi-eye"></i>
-                                        </a> --}}
                                         
                                         <!-- Edit Button - only for draft, open, or rejected -->
                                         @if(in_array($apl->status, ['draft', 'open', 'rejected']))
@@ -276,7 +171,6 @@
                                         </button>
                                         @endif
                                         
-                                        <!-- Download Button - for approved -->
                                         @if($apl->status === 'approved')
                                         <a href="#" class="btn btn-outline-success btn-sm" 
                                            title="Download Sertifikat" disabled>
@@ -293,11 +187,7 @@
             @else
                 <div class="text-center py-5">
                     <i class="bi bi-file-earmark-text display-1 text-muted"></i>
-                    <h5 class="mt-3">Belum Ada APL 01</h5>
-                    <p class="text-muted">Anda belum memiliki formulir APL 01. Mulai dengan membuat APL 01 baru.</p>
-                    <a href="{{ route('asesi.skema-sertifikasi.index') }}" class="btn btn-primary">
-                        <i class="bi bi-plus-circle"></i> Buat APL 01 Pertama
-                    </a>
+                    <h5 class="mt-3">No Pending Task</h5>
                 </div>
             @endif
         </div>
@@ -433,6 +323,52 @@
 
 @push('scripts')
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    const statusFilter = document.getElementById('statusFilter');
+    const searchInput = document.getElementById('searchInput');
+    const applyFilter = document.getElementById('applyFilter');
+    const resetFilter = document.getElementById('resetFilter');
+    const clearSearch = document.getElementById('clearSearch');
+
+    // Apply filter function
+    function applyFilters() {
+        const status = statusFilter.value;
+        const search = searchInput.value.trim();
+        
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (search) params.append('search', search);
+        
+        const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = url;
+    }
+
+    // Event listeners
+    applyFilter.addEventListener('click', applyFilters);
+    
+    resetFilter.addEventListener('click', function() {
+        statusFilter.value = '';
+        searchInput.value = '';
+        window.location.href = window.location.pathname;
+    });
+    
+    clearSearch.addEventListener('click', function() {
+        searchInput.value = '';
+        searchInput.focus();
+    });
+    
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            applyFilters();
+        }
+    });
+    
+    statusFilter.addEventListener('change', function() {
+        if (this.value !== '') {
+            applyFilters();
+        }
+    });
+});
 let deleteAplId = null;
 
 // Status filter functionality

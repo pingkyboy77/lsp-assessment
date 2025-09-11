@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 class Apl01Controller extends Controller
 {
@@ -63,7 +64,8 @@ class Apl01Controller extends Controller
             return redirect()->back()->with('error', 'Gagal memuat data APL 01');
         }
     }
-     public function edit($id)
+
+    public function edit($id)
     {
         $apl = Apl01Pendaftaran::where('user_id', Auth::id())
             ->with(['selectedRequirementTemplate.activeItems'])
@@ -76,7 +78,7 @@ class Apl01Controller extends Controller
         $scheme = $apl
             ->certificationScheme()
             ->with([
-                'unitKompetensis', 
+                'activeUnitKompetensis', 
                 'requirementTemplates' => function ($query) {
                     $query->wherePivot('is_active', true)->orderBy('certification_scheme_requirements.sort_order');
                 },
@@ -89,6 +91,9 @@ class Apl01Controller extends Controller
         $provinces = RegionProv::orderBy('name')->get();
         $cities = RegionKab::with('province')->orderBy('name')->get();
         $trainingProviders = LembagaPelatihan::orderBy('name')->get();
+        
+        // Add user profile data for auto-fill
+        $userProfile = $this->getUserProfileData();
 
         return view('asesi.apl01.form', [
             'scheme' => $scheme,
@@ -96,42 +101,115 @@ class Apl01Controller extends Controller
             'provinces' => $provinces,
             'cities' => $cities,
             'trainingProviders' => $trainingProviders,
+            'userProfile' => $userProfile,
         ]);
     }
 
     public function create($schemeId)
+{
+    $scheme = CertificationScheme::with([
+        'activeUnitKompetensis',
+        'requirementTemplates' => function ($query) {
+            $query->wherePivot('is_active', true)->orderBy('certification_scheme_requirements.sort_order');
+        },
+        'requirementTemplates.activeItems' => function ($query) {
+            $query->where('is_active', true)->orderBy('sort_order');
+        },
+    ])->findOrFail($schemeId);
+    // Check if user already has APL for this scheme
+    $existingApl = Apl01Pendaftaran::where('user_id', Auth::id())
+        ->where('certification_scheme_id', $schemeId)
+        ->first();
+
+    if ($existingApl) {
+        return redirect()->route('asesi.apl01.edit', $existingApl->id)
+            ->with('info', 'Anda sudah memiliki APL 01 untuk skema ini.');
+    }
+
+    $provinces = RegionProv::orderBy('name')->get();
+    $cities = RegionKab::with('province')->orderBy('name')->get();
+    $trainingProviders = LembagaPelatihan::orderBy('name')->get();
+
+    $existingApl = null;
+    
+    // Add user profile data for auto-fill
+    $userProfile = $this->getUserProfileData();
+    // dd(vars: $userProfile);
+    return view('asesi.apl01.form', [
+        'scheme' => $scheme,
+        'existingApl' => $existingApl,
+        'provinces' => $provinces,
+        'cities' => $cities,
+        'trainingProviders' => $trainingProviders,
+        'userProfile' => $userProfile,
+    ]);
+}
+    
+    /**
+     * Get user profile data for auto-fill
+     */
+    private function getUserProfileData()
     {
-        $scheme = CertificationScheme::with([
-            'unitKompetensis',
-            'requirementTemplates' => function ($query) {
-                $query->wherePivot('is_active', true)->orderBy('certification_scheme_requirements.sort_order');
-            },
-            'requirementTemplates.activeItems' => function ($query) {
-                $query->where('is_active', true)->orderBy('sort_order');
-            },
-        ])->findOrFail($schemeId);
+        $user = Auth::user();
+        
+        // Load user with profile relationship
+        $userWithProfile = $user->load('profile');
+        
+        if (!$userWithProfile->profile) {
+            return null;
+        }
+        
+        $profile = $userWithProfile->profile;
+        
+        return [
+            'nama_lengkap' => $profile->nama_lengkap ?? '',
+            'nik' => $profile->nik ?? '',
+            'tempat_lahir' => $profile->tempat_lahir ?? '',
+            'tanggal_lahir' => $profile->tanggal_lahir ? $this->formatDateForInput($profile->tanggal_lahir) : null,
+            'jenis_kelamin' => $profile->jenis_kelamin ?? '',
+            'kebangsaan' => $profile->kebangsaan ?? 'Indonesia',
+            'alamat_rumah' => $profile->alamat_rumah ?? '',
+            'kota_rumah' => $profile->kota_rumah ?? '',
+            'provinsi_rumah' => $profile->provinsi_rumah ?? '',
+            'kode_pos' => $profile->kode_pos ?? '',
+            'no_telp_rumah' => $profile->no_telp_rumah ?? '',
+            'no_hp' => $profile->no_hp ?? '',
+            'email' => $profile->email ?? $user->email ?? '',
+            'pendidikan_terakhir' => $profile->pendidikan_terakhir ?? '',
+            'nama_sekolah_terakhir' => $profile->nama_sekolah_terakhir ?? '',
+            'nama_tempat_kerja' => $profile->nama_tempat_kerja ?? '',
+            'kategori_pekerjaan' => $profile->kategori_pekerjaan ?? '',
+            'jabatan' => $profile->jabatan ?? '',
+            'nama_jalan_kantor' => $profile->nama_jalan_kantor ?? '',
+            'kota_kantor' => $profile->kota_kantor ?? '',
+            'provinsi_kantor' => $profile->provinsi_kantor ?? '',
+            'kode_pos_kantor' => $profile->kode_pos_kantor ?? '',
+            'no_telp_kantor' => $profile->no_telp_kantor ?? ''
+        ];
+    }
 
-        // Check if user already has APL for this scheme
-        $existingApl = Apl01Pendaftaran::where('user_id', Auth::id())->where('certification_scheme_id', $schemeId)->first();
-
-        if ($existingApl) {
-            return redirect()->route('asesi.apl01.edit', $existingApl->id)->with('info', 'Anda sudah memiliki APL 01 untuk skema ini.');
+    /**
+     * Helper method to format date for input field
+     */
+    private function formatDateForInput($date)
+    {
+        if (!$date) {
+            return null;
         }
 
-        $provinces = RegionProv::orderBy('name')->get();
-        $cities = RegionKab::with('province')->orderBy('name')->get();
-        $trainingProviders = LembagaPelatihan::orderBy('name')->get();
+        if (is_string($date)) {
+            try {
+                return Carbon::parse($date)->format('Y-m-d');
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
 
-        // Create empty APL object for form compatibility
-        $existingApl = new Apl01Pendaftaran();
+        if ($date instanceof \Carbon\Carbon) {
+            return $date->format('Y-m-d');
+        }
 
-        return view('asesi.apl01.form', [
-            'scheme' => $scheme,
-            'existingApl' => $existingApl,
-            'provinces' => $provinces,
-            'cities' => $cities,
-            'trainingProviders' => $trainingProviders,
-        ]);
+        return null;
     }
 
     public function store(Request $request, $schemeId)
@@ -300,161 +378,161 @@ class Apl01Controller extends Controller
     }
 
     protected function getValidationRules($scheme, $request = null)
-{
-    $rules = [
-        'nama_lengkap' => 'required|string|max:255',
-        'nik' => 'required|string|size:16',
-        'tempat_lahir' => 'required|string|max:255',
-        'tanggal_lahir' => 'required|date|before:today',
-        'jenis_kelamin' => 'required|in:L,P',
-        'kebangsaan' => 'required|string|max:255',
-        'alamat_rumah' => 'required|string|max:1000',
-        'provinsi_rumah' => 'required|string|max:255',
-        'kota_rumah' => 'required|string|max:255',
-        'kode_pos' => 'nullable|string|max:10',
-        'no_telp_rumah' => 'nullable|string|max:15',
-        'no_hp' => 'required|string|max:15',
-        'email' => 'required|email|max:255',
-        'pendidikan_terakhir' => 'required|string|max:255',
-        'nama_sekolah_terakhir' => 'required|string|max:255',
-        'nama_tempat_kerja' => 'required|string|max:255',
-        'jabatan' => 'required|string|max:255',
-        'kategori_pekerjaan' => 'required|string|max:255',
-        'nama_jalan_kantor' => 'nullable|string|max:1000',
-        'provinsi_kantor' => 'nullable|string|max:255',
-        'kota_kantor' => 'nullable|string|max:255',
-        'kode_pos_kantor' => 'nullable|string|max:10',
-        'no_telp_kantor' => 'nullable|string|max:15',
-        'tuk' => 'nullable|string|max:255',
-        'kategori_peserta' => 'required|in:individu,training_provider',
-        'training_provider' => 'required_if:kategori_peserta,training_provider|nullable|string|max:255',
-        'tujuan_asesmen_radio' => 'required|string|max:255',
-        'tujuan_asesmen' => 'required_if:tujuan_asesmen_radio,Lainnya|nullable|string|max:1000',
-        'pernah_asesmen_lsp' => 'nullable|in:sudah,belum',
-        'bisa_share_screen' => 'nullable|in:ya,tidak',
-        'bisa_gunakan_browser' => 'nullable|in:ya,tidak',
-        'aplikasi_yang_digunakan' => 'nullable|array',
-        'aplikasi_yang_digunakan.*' => 'string|max:255',
-        'pernyataan_benar' => 'required|boolean',
-        'nama_lengkap_ktp' => 'nullable|string|max:255',
-    ];
+    {
+        $rules = [
+            'nama_lengkap' => 'required|string|max:255',
+            'nik' => 'required|string|size:16',
+            'tempat_lahir' => 'required|string|max:255',
+            'tanggal_lahir' => 'required|date|before:today',
+            'jenis_kelamin' => 'required|in:L,P',
+            'kebangsaan' => 'required|string|max:255',
+            'alamat_rumah' => 'required|string|max:1000',
+            'provinsi_rumah' => 'required|string|max:255',
+            'kota_rumah' => 'required|string|max:255',
+            'kode_pos' => 'nullable|string|max:10',
+            'no_telp_rumah' => 'nullable|string|max:15',
+            'no_hp' => 'required|string|max:15',
+            'email' => 'required|email|max:255',
+            'pendidikan_terakhir' => 'required|string|max:255',
+            'nama_sekolah_terakhir' => 'required|string|max:255',
+            'nama_tempat_kerja' => 'required|string|max:255',
+            'jabatan' => 'required|string|max:255',
+            'kategori_pekerjaan' => 'required|string|max:255',
+            'nama_jalan_kantor' => 'nullable|string|max:1000',
+            'provinsi_kantor' => 'nullable|string|max:255',
+            'kota_kantor' => 'nullable|string|max:255',
+            'kode_pos_kantor' => 'nullable|string|max:10',
+            'no_telp_kantor' => 'nullable|string|max:15',
+            'tuk' => 'nullable|string|max:255',
+            'kategori_peserta' => 'required|in:individu,training_provider',
+            'training_provider' => 'required_if:kategori_peserta,training_provider|nullable|string|max:255',
+            'tujuan_asesmen_radio' => 'required|string|max:255',
+            'tujuan_asesmen' => 'required_if:tujuan_asesmen_radio,Lainnya|nullable|string|max:1000',
+            'pernah_asesmen_lsp' => 'nullable|in:sudah,belum',
+            'bisa_share_screen' => 'nullable|in:ya,tidak',
+            'bisa_gunakan_browser' => 'nullable|in:ya,tidak',
+            'aplikasi_yang_digunakan' => 'nullable|array',
+            'aplikasi_yang_digunakan.*' => 'string|max:255',
+            'pernyataan_benar' => 'required|boolean',
+            'nama_lengkap_ktp' => 'nullable|string|max:255',
+        ];
 
-    // Add signature validation for submit action
-    if ($request && $request->input('action') === 'submit') {
-        if (!$request->filled('existing_signature')) {
-            $rules['tanda_tangan_asesi'] = 'required|string';
-        }
-    }
-
-    // Add dynamic requirement template validation
-    if ($scheme && $scheme->requirementTemplates && $scheme->requirementTemplates->count() > 0) {
-        $rules['selected_requirement_template'] = 'required|exists:requirement_templates,id';
-
-        // Only validate items for the selected template
-        $selectedTemplateId = $request ? $request->input('selected_requirement_template') : null;
-        
-        if ($selectedTemplateId) {
-        $selectedTemplate = $scheme->requirementTemplates->find($selectedTemplateId);
-        
-        if ($selectedTemplate && $selectedTemplate->activeItems) {
-            
-            // Cek jika ini adalah update request
-            $isUpdateRequest = false;
-            $existingApl = null;
-            
-            if ($request && method_exists($request, 'route')) {
-                $routeName = $request->route()->getName();
-                if ($routeName === 'asesi.apl01.update') {
-                    $isUpdateRequest = true;
-                    $aplId = $request->route('apl01');
-                    $existingApl = Apl01Pendaftaran::find($aplId);
-                }
+        // Add signature validation for submit action
+        if ($request && $request->input('action') === 'submit') {
+            if (!$request->filled('existing_signature')) {
+                $rules['tanda_tangan_asesi'] = 'required|string';
             }
+        }
+
+        // Add dynamic requirement template validation
+        if ($scheme && $scheme->requirementTemplates && $scheme->requirementTemplates->count() > 0) {
+            $rules['selected_requirement_template'] = 'required|exists:requirement_templates,id';
+
+            // Only validate items for the selected template
+            $selectedTemplateId = $request ? $request->input('selected_requirement_template') : null;
             
-            foreach ($selectedTemplate->activeItems as $item) {
-                $fieldName = "requirement_item_{$item->id}";
+            if ($selectedTemplateId) {
+                $selectedTemplate = $scheme->requirementTemplates->find($selectedTemplateId);
                 
-                switch ($item->type) {
-                    case 'file_upload':
-                        $maxSizeKB = ($item->max_file_size ?? 5) * 1024;
-                        $allowedExtensions = str_replace('.', '', $item->allowed_extensions ?? 'pdf,doc,docx,jpg,jpeg,png');
-                        
-                        // PERBAIKAN UTAMA: Logic untuk file upload
-                        if ($item->is_required) {
-                            $hasExistingFile = false;
-                            
-                            // Cek jika ada file existing (untuk update)
-                            if ($isUpdateRequest && $existingApl) {
-                                $hasExistingFile = $existingApl->hasRequirementFile($item->id);
-                            }
-                            
-                            // PERBAIKAN: Cek juga dari request existing marker
-                            $hasExistingMarker = $request && $request->has($fieldName . '_existing');
-                            
-                            // Jika ada file existing atau marker existing, file upload TIDAK wajib
-                            if ($hasExistingFile || $hasExistingMarker) {
-                                $rules[$fieldName] = "nullable|file|max:{$maxSizeKB}|mimes:{$allowedExtensions}";
-                            } else {
-                                // Tidak ada file existing, file upload WAJIB
-                                $rules[$fieldName] = "required|file|max:{$maxSizeKB}|mimes:{$allowedExtensions}";
-                            }
-                        } else {
-                            // File tidak wajib
-                            $rules[$fieldName] = "nullable|file|max:{$maxSizeKB}|mimes:{$allowedExtensions}";
+                if ($selectedTemplate && $selectedTemplate->activeItems) {
+                    
+                    // Cek jika ini adalah update request
+                    $isUpdateRequest = false;
+                    $existingApl = null;
+                    
+                    if ($request && method_exists($request, 'route')) {
+                        $routeName = $request->route()->getName();
+                        if ($routeName === 'asesi.apl01.update') {
+                            $isUpdateRequest = true;
+                            $aplId = $request->route('apl01');
+                            $existingApl = Apl01Pendaftaran::find($aplId);
                         }
-                        break;
-                            
-                        case 'email':
-                            $rules[$fieldName] = $item->is_required ? 'required|email|max:255' : 'nullable|email|max:255';
-                            break;
-                            
-                        case 'url':
-                            $rules[$fieldName] = $item->is_required ? 'required|url|max:255' : 'nullable|url|max:255';
-                            break;
-                            
-                        case 'date':
-                            $rules[$fieldName] = $item->is_required ? 'required|date' : 'nullable|date';
-                            break;
-                            
-                        case 'select':
-                        case 'radio':
-                            if ($item->options) {
-                                $options = is_string($item->options) ? json_decode($item->options, true) : $item->options;
-                                if (is_array($options) && !empty($options)) {
-                                    $optionValues = implode(',', $options);
-                                    $rules[$fieldName] = $item->is_required ? "required|in:{$optionValues}" : "nullable|in:{$optionValues}";
+                    }
+                    
+                    foreach ($selectedTemplate->activeItems as $item) {
+                        $fieldName = "requirement_item_{$item->id}";
+                        
+                        switch ($item->type) {
+                            case 'file_upload':
+                                $maxSizeKB = ($item->max_file_size ?? 5) * 1024;
+                                $allowedExtensions = str_replace('.', '', $item->allowed_extensions ?? 'pdf,doc,docx,jpg,jpeg,png');
+                                
+                                // Logic untuk file upload
+                                if ($item->is_required) {
+                                    $hasExistingFile = false;
+                                    
+                                    // Cek jika ada file existing (untuk update)
+                                    if ($isUpdateRequest && $existingApl) {
+                                        $hasExistingFile = $existingApl->hasRequirementFile($item->id);
+                                    }
+                                    
+                                    // Cek juga dari request existing marker
+                                    $hasExistingMarker = $request && $request->has($fieldName . '_existing');
+                                    
+                                    // Jika ada file existing atau marker existing, file upload TIDAK wajib
+                                    if ($hasExistingFile || $hasExistingMarker) {
+                                        $rules[$fieldName] = "nullable|file|max:{$maxSizeKB}|mimes:{$allowedExtensions}";
+                                    } else {
+                                        // Tidak ada file existing, file upload WAJIB
+                                        $rules[$fieldName] = "required|file|max:{$maxSizeKB}|mimes:{$allowedExtensions}";
+                                    }
+                                } else {
+                                    // File tidak wajib
+                                    $rules[$fieldName] = "nullable|file|max:{$maxSizeKB}|mimes:{$allowedExtensions}";
                                 }
-                            }
-                            break;
-                            
-                        case 'checkbox':
-                            if ($item->options) {
-                                $options = is_string($item->options) ? json_decode($item->options, true) : $item->options;
-                                if (is_array($options) && !empty($options)) {
-                                    $rules[$fieldName] = 'nullable|array';
-                                    $rules[$fieldName . '.*'] = 'in:' . implode(',', $options);
+                                break;
+                                
+                            case 'email':
+                                $rules[$fieldName] = $item->is_required ? 'required|email|max:255' : 'nullable|email|max:255';
+                                break;
+                                
+                            case 'url':
+                                $rules[$fieldName] = $item->is_required ? 'required|url|max:255' : 'nullable|url|max:255';
+                                break;
+                                
+                            case 'date':
+                                $rules[$fieldName] = $item->is_required ? 'required|date' : 'nullable|date';
+                                break;
+                                
+                            case 'select':
+                            case 'radio':
+                                if ($item->options) {
+                                    $options = is_string($item->options) ? json_decode($item->options, true) : $item->options;
+                                    if (is_array($options) && !empty($options)) {
+                                        $optionValues = implode(',', $options);
+                                        $rules[$fieldName] = $item->is_required ? "required|in:{$optionValues}" : "nullable|in:{$optionValues}";
+                                    }
+                                }
+                                break;
+                                
+                            case 'checkbox':
+                                if ($item->options) {
+                                    $options = is_string($item->options) ? json_decode($item->options, true) : $item->options;
+                                    if (is_array($options) && !empty($options)) {
+                                        $rules[$fieldName] = 'nullable|array';
+                                        $rules[$fieldName . '.*'] = 'in:' . implode(',', $options);
+                                    } else {
+                                        $rules[$fieldName] = 'nullable|boolean';
+                                    }
                                 } else {
                                     $rules[$fieldName] = 'nullable|boolean';
                                 }
-                            } else {
-                                $rules[$fieldName] = 'nullable|boolean';
-                            }
-                            break;
-                            
-                        case 'textarea':
-                            $rules[$fieldName] = $item->is_required ? 'required|string|max:2000' : 'nullable|string|max:2000';
-                            break;
-                            
-                        default: // text_input
-                            $rules[$fieldName] = $item->is_required ? 'required|string|max:1000' : 'nullable|string|max:1000';
+                                break;
+                                
+                            case 'textarea':
+                                $rules[$fieldName] = $item->is_required ? 'required|string|max:2000' : 'nullable|string|max:2000';
+                                break;
+                                
+                            default: // text_input
+                                $rules[$fieldName] = $item->is_required ? 'required|string|max:1000' : 'nullable|string|max:1000';
+                        }
                     }
                 }
             }
         }
-    }
 
-    return $rules;
-} 
+        return $rules;
+    } 
 
     protected function processSignature($signatureData)
     {
@@ -500,68 +578,68 @@ class Apl01Controller extends Controller
     }
 
     protected function handleRequirementResponses($request, $apl, $scheme)
-{
-    $responses = $apl->requirement_answers ?? [];
+    {
+        $responses = $apl->requirement_answers ?? [];
 
-    $selectedTemplateId = $request->input('selected_requirement_template');
+        $selectedTemplateId = $request->input('selected_requirement_template');
 
-    if ($selectedTemplateId && $scheme->requirementTemplates) {
-        $selectedTemplate = $scheme->requirementTemplates->find($selectedTemplateId);
+        if ($selectedTemplateId && $scheme->requirementTemplates) {
+            $selectedTemplate = $scheme->requirementTemplates->find($selectedTemplateId);
 
-        if ($selectedTemplate && $selectedTemplate->activeItems) {
-            foreach ($selectedTemplate->activeItems as $item) {
-                $fieldName = "requirement_item_{$item->id}";
-                $existingMarker = $fieldName . '_existing';
+            if ($selectedTemplate && $selectedTemplate->activeItems) {
+                foreach ($selectedTemplate->activeItems as $item) {
+                    $fieldName = "requirement_item_{$item->id}";
+                    $existingMarker = $fieldName . '_existing';
 
-                // Handle file uploads
-                if ($request->hasFile($fieldName)) {
-                    try {
-                        // Delete old file if exists
-                        if (isset($responses[$item->id]) && is_string($responses[$item->id])) {
-                            $oldPath = $responses[$item->id];
-                            if ($oldPath && Storage::disk('public')->exists($oldPath)) {
-                                Storage::disk('public')->delete($oldPath);
+                    // Handle file uploads
+                    if ($request->hasFile($fieldName)) {
+                        try {
+                            // Delete old file if exists
+                            if (isset($responses[$item->id]) && is_string($responses[$item->id])) {
+                                $oldPath = $responses[$item->id];
+                                if ($oldPath && Storage::disk('public')->exists($oldPath)) {
+                                    Storage::disk('public')->delete($oldPath);
+                                }
                             }
+
+                            $file = $request->file($fieldName);
+
+                            // Validate file size
+                            $maxSizeBytes = ($item->max_file_size ?? 5) * 1024 * 1024;
+                            if ($file->getSize() > $maxSizeBytes) {
+                                throw new \Exception("File terlalu besar. Maksimal " . ($item->max_file_size ?? 5) . "MB");
+                            }
+
+                            // Store new file
+                            $path = $file->store('apl01/requirements', 'public');
+                            $responses[$item->id] = $path;
+
+                        } catch (\Exception $e) {
+                            Log::error("Error uploading file for item {$item->id}: " . $e->getMessage());
+                            throw new \Exception("Gagal mengupload file untuk {$item->document_name}: " . $e->getMessage());
                         }
-
-                        $file = $request->file($fieldName);
-
-                        // Validate file size
-                        $maxSizeBytes = ($item->max_file_size ?? 5) * 1024 * 1024;
-                        if ($file->getSize() > $maxSizeBytes) {
-                            throw new \Exception("File terlalu besar. Maksimal " . ($item->max_file_size ?? 5) . "MB");
-                        }
-
-                        // Store new file
-                        $path = $file->store('apl01/requirements', 'public');
-                        $responses[$item->id] = $path;
-
-                    } catch (\Exception $e) {
-                        Log::error("Error uploading file for item {$item->id}: " . $e->getMessage());
-                        throw new \Exception("Gagal mengupload file untuk {$item->document_name}: " . $e->getMessage());
+                    } 
+                    // Cek existing marker untuk mempertahankan file lama
+                    elseif ($request->has($existingMarker)) {
+                        // File existing ada, pertahankan data lama
+                        // Tidak perlu ubah $responses[$item->id] karena sudah ada dari database
                     }
-                } 
-                // PERBAIKAN: Cek existing marker untuk mempertahankan file lama
-                elseif ($request->has($existingMarker)) {
-                    // File existing ada, pertahankan data lama
-                    // Tidak perlu ubah $responses[$item->id] karena sudah ada dari database
-                }
-                // Handle other input types
-                elseif ($request->has($fieldName)) {
-                    $value = $request->input($fieldName);
+                    // Handle other input types
+                    elseif ($request->has($fieldName)) {
+                        $value = $request->input($fieldName);
 
-                    if ($item->type === 'checkbox' && is_array($value)) {
-                        $responses[$item->id] = implode(',', $value);
-                    } elseif (!is_null($value) && $value !== '') {
-                        $responses[$item->id] = $value;
+                        if ($item->type === 'checkbox' && is_array($value)) {
+                            $responses[$item->id] = implode(',', $value);
+                        } elseif (!is_null($value) && $value !== '') {
+                            $responses[$item->id] = $value;
+                        }
                     }
                 }
             }
         }
-    }
 
-    $apl->update(['requirement_answers' => $responses]);
-}
+        $apl->update(['requirement_answers' => $responses]);
+    }
 
     protected function generateAplNumber()
     {

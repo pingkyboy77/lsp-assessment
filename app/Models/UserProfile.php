@@ -39,12 +39,30 @@ class UserProfile extends Model
         'updated_by',
     ];
 
-    protected $dates = [
-        'tanggal_lahir',
-        'created_at',
-        'updated_at',
-    ];
+    // protected $dates = [
+    //     'tanggal_lahir',
+    //     'created_at',
+    //     'updated_at',
+    // ];
+public function getTanggalLahirFormatted($format = 'Y-m-d')
+    {
+        if (!$this->tanggal_lahir) {
+            return null;
+        }
 
+        // Jika sudah Carbon instance
+        if ($this->tanggal_lahir instanceof \Carbon\Carbon) {
+            return $this->tanggal_lahir->format($format);
+        }
+
+        // Jika masih string, konversi dulu
+        try {
+            return \Carbon\Carbon::parse($this->tanggal_lahir)->format($format);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+    
     // Relationship dengan User
     public function user()
     {
@@ -91,4 +109,25 @@ class UserProfile extends Model
               ->orWhere('email', 'like', "%{$search}%");
         });
     }
+
+
+public function cityRumah()
+{
+    return $this->belongsTo(RegionKab::class, 'kota_rumah');
+}
+
+public function cityKantor()
+{
+    return $this->belongsTo(RegionKab::class, 'kota_kantor');
+}
+
+public function provinceRumah()
+{
+    return $this->belongsTo(RegionProv::class, 'provinsi_rumah');
+}
+
+public function provinceKantor()
+{
+    return $this->belongsTo(RegionProv::class, 'provinsi_kantor');
+}
 }

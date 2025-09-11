@@ -378,11 +378,15 @@
     </div>
 </div>
 
-<!-- Chart.js -->
+<!-- Chart.js and DataLabels Plugin -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
-    $(document).ready(function() {
+<script>
+    
+$(document).ready(function() {
+
+   
     // Initialize DataTable with server-side processing
     const expiredTable = $('#expiredCertificatesTable').DataTable({
         processing: true,
@@ -472,12 +476,8 @@
             console.log('Expired certificates table initialized');
         }
     });
-
-    // Custom styling for status badges
-    $('#expiredCertificatesTable').on('draw.dt', function() {
-        // Add hover effects or additional styling if needed
-    });
 });
+
 document.addEventListener('DOMContentLoaded', function() {
     let schemeChart = null;
     const ctx = document.getElementById('schemeChart').getContext('2d');
@@ -568,27 +568,15 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // Create Chart
+    // Create Chart - UPDATED VERSION WITH NAVY COLOR AND DATA LABELS
     function createChart(labels, data) {
         if (schemeChart) {
             schemeChart.destroy();
         }
 
-        // Professional color palette
-        const colors = [
-            'rgba(54, 162, 235, 0.8)',   // Blue
-            'rgba(255, 99, 132, 0.8)',   // Red
-            'rgba(75, 192, 192, 0.8)',   // Teal
-            'rgba(255, 206, 86, 0.8)',   // Yellow
-            'rgba(153, 102, 255, 0.8)',  // Purple
-            'rgba(255, 159, 64, 0.8)',   // Orange
-            'rgba(199, 199, 199, 0.8)',  // Grey
-            'rgba(83, 102, 255, 0.8)',   // Indigo
-            'rgba(255, 99, 255, 0.8)',   // Pink
-            'rgba(99, 255, 132, 0.8)'    // Green
-        ];
-
-        const borderColors = colors.map(color => color.replace('0.8', '1'));
+        // Navy blue solid color for all bars
+        const navyBlue = '#1e3a8a'; // Navy blue color
+        const navyBlueHover = '#1e40af'; // Slightly lighter navy for hover
 
         schemeChart = new Chart(ctx, {
             type: 'bar',
@@ -597,11 +585,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Total Peserta',
                     data: data,
-                    backgroundColor: colors.slice(0, labels.length),
-                    borderColor: borderColors.slice(0, labels.length),
+                    backgroundColor: navyBlue, // Single navy color for all bars
+                    borderColor: navyBlue,
                     borderWidth: 2,
                     borderRadius: 8,
                     borderSkipped: false,
+                    hoverBackgroundColor: navyBlueHover,
+                    hoverBorderColor: navyBlueHover,
                 }]
             },
             options: {
@@ -612,7 +602,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         display: false
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        backgroundColor: 'rgba(30, 58, 138, 0.9)', // Navy background for tooltip
                         titleColor: '#fff',
                         bodyColor: '#fff',
                         cornerRadius: 8,
@@ -621,6 +611,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             label: function(context) {
                                 return `Total: ${context.parsed.y.toLocaleString('id-ID')} peserta`;
                             }
+                        }
+                    },
+                    // Plugin untuk menampilkan angka di atas bar
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: '#1e3a8a', // Navy color for numbers
+                        font: {
+                            weight: 'bold',
+                            size: 12
+                        },
+                        formatter: function(value) {
+                            return value.toLocaleString('id-ID');
                         }
                     }
                 },
@@ -648,12 +652,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 animation: {
                     duration: 1000,
                     easing: 'easeOutQuart'
+                },
+                // Add padding to top to accommodate data labels
+                layout: {
+                    padding: {
+                        top: 30
+                    }
                 }
-            }
+            },
+            // Register the datalabels plugin
+            plugins: [ChartDataLabels]
         });
     }
 
-    // Load Chart Data - Fixed version
+    // Load Chart Data
     function loadChartData(year) {
         const loading = document.getElementById('chartLoading');
         loading.classList.remove('d-none');

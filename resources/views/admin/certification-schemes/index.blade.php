@@ -253,8 +253,29 @@
 @endpush
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         $(document).ready(function() {
+             $(document).on('click', '.delete-btn', function() {
+    const id = $(this).data('id');
+    const name = $(this).data('name');
+    const form = $('#delete-form-' + id);
+    
+    Swal.fire({
+        title: 'Konfirmasi Hapus',
+        text: `Apakah Anda yakin ingin menghapus skema sertifikasi "${name}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            form.submit();
+        }
+    });
+});
             var table = $('#schemesTable').DataTable({
                 processing: true,
                 serverSide: true,

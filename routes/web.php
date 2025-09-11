@@ -61,7 +61,7 @@ Route::prefix('admin')
     Route::get('/dashboard/chart-data', [SuperAdminDashboardController::class, 'getChartData'])->name('dashboard.chart-data');
     Route::get('/dashboard/expiring-certificates', [SuperAdminDashboardController::class, 'getExpiringCertificates'])->name('dashboard.expiring-certificates');
     Route::get('/debug-expiring', [SuperAdminDashboardController::class, 'debugExpiringCertificates'])->name('debug.expiring');
-    Route::get('/dashboard/expired-certificates', [SuperAdminDashboardController::class, 'getExpiringCertificatesDataTable'])->name('dashboard.expired-certificates');
+    Route::get('/dashboardenv/expired-certificates', [SuperAdminDashboardController::class, 'getExpiringCertificatesDataTable'])->name('dashboard.expired-certificates');
 
         Route::resource('users', UserManagementController::class)->names('users');
         Route::resource('roles', RoleController::class)->names('roles');

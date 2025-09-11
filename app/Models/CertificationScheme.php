@@ -38,13 +38,11 @@ class CertificationScheme extends Model
     }
 
     public function requirementTemplates()
-    {
-        return $this->belongsToMany(RequirementTemplate::class, 'certification_scheme_requirements')
-            ->withPivot(['sort_order', 'is_active'])
-            ->withTimestamps()
-            ->wherePivot('is_active', true)
-            ->orderBy('sort_order');
-    }
+{
+    return $this->belongsToMany(RequirementTemplate::class, 'certification_scheme_requirements')
+                ->withPivot('is_active', 'sort_order')
+                ->orderBy('certification_scheme_requirements.sort_order');
+}
 
     public function allRequirementTemplates()
     {
@@ -84,9 +82,9 @@ class CertificationScheme extends Model
     }
 
     public function activeUnitKompetensis()
-    {
-        return $this->activeUnits();
-    }
+{
+    return $this->hasMany(UnitKompetensi::class)->where('is_active', true);
+}
 
     public function elemenKompetensis()
     {

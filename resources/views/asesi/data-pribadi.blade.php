@@ -42,9 +42,6 @@
                     <div class="card border-0 shadow-sm">
                         <div class="card-body">
                             <div class="d-flex align-items-center">
-                                {{-- <div class="feature-icon bg-primary bg-gradient text-white rounded-3 me-3">
-                                    <i class="bi bi-person-fill"></i>
-                                </div> --}}
                                 <div>
                                     <h4 class="mb-1 text-dark">Profile</h4>
                                     <p class="mb-0 text-muted">Lengkapi data profil dan dokumen pendukung Anda</p>
@@ -184,12 +181,21 @@
                         <div class="col-md-6">
                             <label for="pendidikan_terakhir" class="form-label fw-semibold">Pendidikan Terakhir <span
                                     class="text-danger">*</span></label>
-                            <input type="text" name="pendidikan_terakhir" id="pendidikan_terakhir"
-                                value="{{ old('pendidikan_terakhir', $profile->pendidikan_terakhir ?? '') }}"
-                                class="form-control @error('pendidikan_terakhir') is-invalid @enderror" required>
-                            @error('pendidikan_terakhir')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <select class="form-select @error('pendidikan_terakhir') error @enderror"
+        name="pendidikan_terakhir" required>
+    <option value="">Pilih Pendidikan</option>
+    @foreach (['SD', 'SMP', 'SMA/SMK', 'Diploma', 'Sarjana', 'Magister', 'Doktor'] as $edu)
+        <option value="{{ $edu }}"
+            {{ old('pendidikan_terakhir', $profile->pendidikan_terakhir ?? '') == $edu ? 'selected' : '' }}>
+            {{ $edu }}
+        </option>
+    @endforeach
+</select>
+
+@error('pendidikan_terakhir')
+    <div class="error-message">{{ $message }}</div>
+@enderror
+
                         </div>
 
                         {{-- Nama Sekolah Terakhir --}}
@@ -219,27 +225,17 @@
                         <div class="col-md-6">
                             <label for="kota_rumah" class="form-label fw-semibold">Kota <span
                                     class="text-danger">*</span></label>
-                            <select name="kota_rumah" id="kota_rumah"
-                                class="form-select @error('kota_rumah') is-invalid @enderror" required>
-                                <option value="">Pilih Kota</option>
-                                <option value="Jakarta"
-                                    {{ old('kota_rumah', $profile->kota_rumah ?? '') == 'Jakarta' ? 'selected' : '' }}>
-                                    Jakarta
-                                </option>
-                                <option value="Surabaya"
-                                    {{ old('kota_rumah', $profile->kota_rumah ?? '') == 'Surabaya' ? 'selected' : '' }}>
-                                    Surabaya</option>
-                                <option value="Bandung"
-                                    {{ old('kota_rumah', $profile->kota_rumah ?? '') == 'Bandung' ? 'selected' : '' }}>
-                                    Bandung
-                                </option>
-                                <option value="Medan"
-                                    {{ old('kota_rumah', $profile->kota_rumah ?? '') == 'Medan' ? 'selected' : '' }}>Medan
-                                </option>
-                                <option value="Semarang"
-                                    {{ old('kota_rumah', $profile->kota_rumah ?? '') == 'Semarang' ? 'selected' : '' }}>
-                                    Semarang</option>
-                            </select>
+                            <select name="kota_rumah" id="kota_rumah" class="form-select">
+    <option value="">Pilih Kota</option>
+    @foreach ($cities as $city)
+        <option value="{{ $city->id }}" 
+                data-province-id="{{ $city->province->id }}"
+                data-province-name="{{ $city->province->name }}"
+                {{ old('kota_rumah', $profile->kota_rumah ?? '') == $city->id ? 'selected' : '' }}>
+            {{ $city->name }}
+        </option>
+    @endforeach
+</select>
                             @error('kota_rumah')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -249,25 +245,12 @@
                         <div class="col-md-6">
                             <label for="provinsi_rumah" class="form-label fw-semibold">Provinsi <span
                                     class="text-danger">*</span></label>
-                            <select name="provinsi_rumah" id="provinsi_rumah"
-                                class="form-select @error('provinsi_rumah') is-invalid @enderror" required>
-                                <option value="">Provinsi</option>
-                                <option value="DKI Jakarta"
-                                    {{ old('provinsi_rumah', $profile->provinsi_rumah ?? '') == 'DKI Jakarta' ? 'selected' : '' }}>
-                                    DKI Jakarta</option>
-                                <option value="Jawa Barat"
-                                    {{ old('provinsi_rumah', $profile->provinsi_rumah ?? '') == 'Jawa Barat' ? 'selected' : '' }}>
-                                    Jawa Barat</option>
-                                <option value="Jawa Timur"
-                                    {{ old('provinsi_rumah', $profile->provinsi_rumah ?? '') == 'Jawa Timur' ? 'selected' : '' }}>
-                                    Jawa Timur</option>
-                                <option value="Jawa Tengah"
-                                    {{ old('provinsi_rumah', $profile->provinsi_rumah ?? '') == 'Jawa Tengah' ? 'selected' : '' }}>
-                                    Jawa Tengah</option>
-                                <option value="Sumatera Utara"
-                                    {{ old('provinsi_rumah', $profile->provinsi_rumah ?? '') == 'Sumatera Utara' ? 'selected' : '' }}>
-                                    Sumatera Utara</option>
-                            </select>
+                            
+                            <input type="hidden" id="provinsi_rumah" name="provinsi_rumah"
+                                value="{{ old('provinsi_rumah', $profile->provinsi_rumah ?? '') }}">
+                            <input type="text" id="provinsi_rumah_display" class="form-control"
+                                value="{{ old('provinsi_rumah_display', $profile->provinceRumah?->name ?? '') }}"
+                                placeholder="Provinsi akan otomatis terisi" readonly>
                             @error('provinsi_rumah')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -284,8 +267,6 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-
-
                     </div>
                 </div>
             </div>
@@ -314,40 +295,21 @@
 
                         {{-- Kategori Pekerjaan --}}
                         <div class="col-12">
-                            <label for="kategori_pekerjaan" class="form-label fw-semibold">Kategori Pekerjaan <span
-                                    class="text-danger">*</span></label>
-                            <select name="kategori_pekerjaan" id="kategori_pekerjaan"
-                                class="form-select @error('kategori_pekerjaan') is-invalid @enderror" required>
-                                <option value="">Pilih Kategori Pekerjaan</option>
-                                <option value="Pendidikan"
-                                    {{ old('kategori_pekerjaan', $profile->kategori_pekerjaan ?? '') == 'Pendidikan' ? 'selected' : '' }}>
-                                    Pendidikan</option>
-                                <option value="Teknologi Informasi"
-                                    {{ old('kategori_pekerjaan', $profile->kategori_pekerjaan ?? '') == 'Teknologi Informasi' ? 'selected' : '' }}>
-                                    Teknologi Informasi</option>
-                                <option value="Kesehatan"
-                                    {{ old('kategori_pekerjaan', $profile->kategori_pekerjaan ?? '') == 'Kesehatan' ? 'selected' : '' }}>
-                                    Kesehatan</option>
-                                <option value="Keuangan"
-                                    {{ old('kategori_pekerjaan', $profile->kategori_pekerjaan ?? '') == 'Keuangan' ? 'selected' : '' }}>
-                                    Keuangan</option>
-                                <option value="Pemerintahan"
-                                    {{ old('kategori_pekerjaan', $profile->kategori_pekerjaan ?? '') == 'Pemerintahan' ? 'selected' : '' }}>
-                                    Pemerintahan</option>
-                                <option value="Swasta"
-                                    {{ old('kategori_pekerjaan', $profile->kategori_pekerjaan ?? '') == 'Swasta' ? 'selected' : '' }}>
-                                    Swasta</option>
-                                <option value="BUMN"
-                                    {{ old('kategori_pekerjaan', $profile->kategori_pekerjaan ?? '') == 'BUMN' ? 'selected' : '' }}>
-                                    BUMN</option>
-                                <option value="Wiraswasta"
-                                    {{ old('kategori_pekerjaan', $profile->kategori_pekerjaan ?? '') == 'Wiraswasta' ? 'selected' : '' }}>
-                                    Wiraswasta</option>
-                            </select>
-                            @error('kategori_pekerjaan')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
+    <label for="kategori_pekerjaan" class="form-label fw-semibold">Kategori Pekerjaan <span class="text-danger">*</span></label>
+    <select name="kategori_pekerjaan" id="kategori_pekerjaan"
+        class="form-select @error('kategori_pekerjaan') is-invalid @enderror" required>
+        <option value="">Pilih Kategori Pekerjaan</option>
+        @foreach (\App\Models\Pekerjaan::orderBy('kode')->get() as $pekerjaan)
+            <option value="{{ $pekerjaan->nama_pekerjaan }}"
+                {{ old('kategori_pekerjaan', $profile->kategori_pekerjaan ?? '') == $pekerjaan->nama_pekerjaan ? 'selected' : '' }}>
+                {{ $pekerjaan->nama_pekerjaan }}
+            </option>
+        @endforeach
+    </select>
+    @error('kategori_pekerjaan')
+        <div class="invalid-feedback">{{ $message }}</div>
+    @enderror
+</div>
 
                         {{-- Jabatan --}}
                         <div class="col-12">
@@ -362,7 +324,7 @@
                         </div>
                         {{-- Nama Jalan --}}
                         <div class="col-12">
-                            <label for="nama_jalan_kantor" class="form-label fw-semibold">Alamat Kntor <span
+                            <label for="nama_jalan_kantor" class="form-label fw-semibold">Alamat Kantor <span
                                     class="text-danger">*</span></label>
                             <input type="text" name="nama_jalan_kantor" id="nama_jalan_kantor"
                                 value="{{ old('nama_jalan_kantor', $profile->nama_jalan_kantor ?? '') }}"
@@ -376,9 +338,17 @@
                         <div class="col-md-6">
                             <label for="kota_kantor" class="form-label fw-semibold">Kota <span
                                     class="text-danger">*</span></label>
-                            <input type="text" name="kota_kantor" id="kota_kantor"
-                                value="{{ old('kota_kantor', $profile->kota_kantor ?? '') }}"
-                                class="form-control @error('kota_kantor') is-invalid @enderror" required>
+                            <select name="kota_kantor" id="kota_kantor"
+                                class="form-select @error('kota_kantor') is-invalid @enderror" required>
+                                <option value="">Pilih Kota</option>
+                                @foreach ($cities as $city)
+                                    <option value="{{ $city->id }}" data-province-id="{{ $city->province->id }}"
+                                        data-province-name="{{ $city->province->name }}"
+                                        {{ old('kota_kantor', $profile->kota_kantor ?? '') == $city->id ? 'selected' : '' }}>
+                                        {{ $city->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                             @error('kota_kantor')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -388,9 +358,12 @@
                         <div class="col-md-6">
                             <label for="provinsi_kantor" class="form-label fw-semibold">Provinsi <span
                                     class="text-danger">*</span></label>
-                            <input type="text" name="provinsi_kantor" id="provinsi_kantor"
-                                value="{{ old('provinsi_kantor', $profile->provinsi_kantor ?? '') }}"
-                                class="form-control @error('provinsi_kantor') is-invalid @enderror" required>
+                            
+                            <input type="hidden" id="provinsi_kantor" name="provinsi_kantor"
+                                value="{{ old('provinsi_kantor', $profile->provinsi_kantor ?? '') }}">
+                            <input type="text" id="provinsi_kantor_display" class="form-control"
+                                value="{{ old('provinsi_kantor_display', $profile->provinceKantor?->name ?? '') }}"
+                                placeholder="Provinsi akan otomatis terisi" readonly>
                             @error('provinsi_kantor')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -582,7 +555,58 @@
 @endsection
 
 @push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
     <style>
+        /* Select2 Custom Styles */
+        .select2-container--bootstrap-5 .select2-selection {
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            min-height: calc(1.5em + 0.75rem + 2px);
+        }
+        
+        .select2-container--bootstrap-5 .select2-selection--single {
+            height: calc(1.5em + 0.75rem + 2px) !important;
+        }
+        
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+            color: #212529;
+            line-height: 1.5;
+        }
+        
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+            height: calc(1.5em + 0.75rem);
+            right: 0.75rem;
+        }
+        
+        .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+        .select2-container--bootstrap-5.select2-container--open .select2-selection {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .select2-dropdown {
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+        }
+        
+        .select2-container--bootstrap-5 .select2-results__option--highlighted {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        
+        /* Error state for Select2 */
+        .is-invalid + .select2-container--bootstrap-5 .select2-selection {
+            border-color: #dc3545;
+        }
+        
+        .is-invalid + .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+        .is-invalid + .select2-container--bootstrap-5.select2-container--open .select2-selection {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+        }<style>
         .feature-icon {
             width: 4rem;
             height: 4rem;
@@ -668,132 +692,339 @@
                 max-height: 100px;
             }
         }
+
+        .form-control, 
+.form-select option {
+    text-transform: uppercase;
+}
+
+/* Specific styling for different input types */
+input[type="text"], 
+input[type="email"], 
+input[type="tel"], 
+textarea, 
+select {
+    text-transform: uppercase;
+}
+
+/* Keep email inputs lowercase for better functionality */
+input[type="email"] {
+    text-transform: lowercase;
+}
+
+/* Select2 dropdown options */
+.select2-container--bootstrap-5 .select2-selection__rendered,
+.select2-results__option {
+    text-transform: uppercase;
+}
+
+/* Exception for readonly fields (like province display) */
+input[readonly] {
+    text-transform: uppercase;
+}
+
+/* Placeholder text styling */
+.form-control::placeholder,
+.form-select option[value=""]::after {
+    text-transform: none;
+    opacity: 0.7;
+}
+
+/* Override for specific fields that should remain normal case if needed */
+.normal-case {
+    text-transform: none !important;
+}
+
+/* Select2 custom uppercase styling */
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+    text-transform: uppercase;
+}
+
+.select2-container--bootstrap-5 .select2-results__option {
+    text-transform: uppercase;
+}
+
+.select2-container--bootstrap-5 .select2-results__option--highlighted {
+    text-transform: uppercase;
+}
     </style>
 @endpush
 
 @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-        // File Preview Function
-        function previewFile(input, type) {
-            const file = input.files[0];
-            const previewContainer = document.getElementById(`preview_${type}`);
-            const uploadCard = input.closest('.upload-card');
-
-            if (file) {
-                // Validate file size (2MB)
-                if (file.size > 2 * 1024 * 1024) {
-                    alert('Ukuran file terlalu besar! Maksimal 2MB.');
-                    input.value = '';
-                    return;
-                }
-
-                // Validate file type
-                const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-                if (!allowedTypes.includes(file.type)) {
-                    alert('Format file tidak didukung! Gunakan PDF, JPG, atau PNG.');
-                    input.value = '';
-                    return;
-                }
-
-                // Show preview container
-                previewContainer.style.display = 'block';
-                uploadCard.classList.add('has-file');
-
-                // Update file info
-                document.getElementById(`filename_${type}`).textContent = file.name;
-                document.getElementById(`filesize_${type}`).textContent = formatFileSize(file.size);
-
-                if (file.type.startsWith('image/')) {
-                    // Show image preview
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const img = document.getElementById(`img_${type}`);
-                        img.src = e.target.result;
-                        img.style.display = 'block';
-                        document.getElementById(`pdf_${type}`).style.display = 'none';
-                    };
-                    reader.readAsDataURL(file);
-                } else if (file.type === 'application/pdf') {
-                    // Show PDF preview
-                    document.getElementById(`img_${type}`).style.display = 'none';
-                    document.getElementById(`pdf_${type}`).style.display = 'block';
-                }
-            }
-        }
-
-        // Remove Preview Function
-        function removePreview(type) {
-            const input = document.querySelector(`input[name="documents[${type}]"]`);
-            const previewContainer = document.getElementById(`preview_${type}`);
-            const uploadCard = input.closest('.upload-card');
-
-            input.value = '';
-            previewContainer.style.display = 'none';
-            uploadCard.classList.remove('has-file');
-
-            // Clear preview content
-            document.getElementById(`img_${type}`).src = '';
-            document.getElementById(`img_${type}`).style.display = 'none';
-            document.getElementById(`pdf_${type}`).style.display = 'none';
-        }
-
-        // Format File Size
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-        }
-
-        // Delete Document Function
-        function deleteDocument(documentId) {
-            const deleteForm = document.getElementById('deleteForm');
-            deleteForm.action = `/data-pribadi/document/${documentId}`;
-
-            const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-            deleteModal.show();
-        }
-
-        // Auto format NIK input
-        document.getElementById('nik').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length > 16) {
-                value = value.substring(0, 16);
-            }
-            e.target.value = value;
+        $(document).ready(function() {
+            // Initialize Select2 for city dropdowns
+            initializeSelect2();
+            
+            // Initialize city/province handlers
+            initializeCityProvinceHandlers();
+            
+            // Initialize other form handlers
+            initializeFormHandlers();
+            
+             initializeUppercaseInputs();
         });
 
-        // Auto format phone numbers
-        ['no_telp_rumah', 'no_hp', 'no_telp_kantor'].forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.addEventListener('input', function(e) {
-                    let value = e.target.value.replace(/[^\d\-\+\(\)\s]/g, '');
-                    e.target.value = value;
-                });
-            }
-        });
+        function initializeSelect2() {
+            // Initialize Select2 for city dropdowns
+            $('#kota_rumah').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Pilih Kota',
+                allowClear: true,
+                width: '100%'
+            });
 
-        // Auto format postal code
-        ['kode_pos', 'kode_pos_kantor'].forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.addEventListener('input', function(e) {
+            $('#kota_kantor').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Pilih Kota',
+                allowClear: true,
+                width: '100%'
+            });
+
+            // Initialize Select2 for kategori pekerjaan
+            $('#kategori_pekerjaan').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Pilih Kategori Pekerjaan',
+                allowClear: true,
+                width: '100%'
+            });
+
+            // Initialize Select2 for pendidikan terakhir
+            $('#pendidikan_terakhir').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Pilih Pendidikan',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+
+        // City/Province Auto-fill functionality for both home and office
+        function initializeCityProvinceHandlers() {
+            // Handler for home address
+            $('#kota_rumah').on('change', function() {
+                const selectedOption = $(this).find('option:selected');
+                const provinceId = selectedOption.data('province-id');
+                const provinceName = selectedOption.data('province-name');
+                
+                if (provinceId && provinceName) {
+                    $('#provinsi_rumah').val(provinceId);
+                    $('#provinsi_rumah_display').val(provinceName);
+                } else {
+                    $('#provinsi_rumah').val('');
+                    $('#provinsi_rumah_display').val('');
+                }
+            });
+
+            // Handler for office address
+            $('#kota_kantor').on('change', function() {
+                const selectedOption = $(this).find('option:selected');
+                const provinceId = selectedOption.data('province-id');
+                const provinceName = selectedOption.data('province-name');
+                
+                if (provinceId && provinceName) {
+                    $('#provinsi_kantor').val(provinceId);
+                    $('#provinsi_kantor_display').val(provinceName);
+                } else {
+                    $('#provinsi_kantor').val('');
+                    $('#provinsi_kantor_display').val('');
+                }
+            });
+
+            // Initialize on page load if values already selected
+            if ($('#kota_rumah').val()) {
+                $('#kota_rumah').trigger('change');
+            }
+            if ($('#kota_kantor').val()) {
+                $('#kota_kantor').trigger('change');
+            }
+        }
+
+        function initializeFormHandlers() {
+            // File Preview Function
+            window.previewFile = function(input, type) {
+                const file = input.files[0];
+                const previewContainer = document.getElementById(`preview_${type}`);
+                const uploadCard = input.closest('.upload-card');
+
+                if (file) {
+                    // Validate file size (2MB)
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('Ukuran file terlalu besar! Maksimal 2MB.');
+                        input.value = '';
+                        return;
+                    }
+
+                    // Validate file type
+                    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+                    if (!allowedTypes.includes(file.type)) {
+                        alert('Format file tidak didukung! Gunakan PDF, JPG, atau PNG.');
+                        input.value = '';
+                        return;
+                    }
+
+                    // Show preview container
+                    previewContainer.style.display = 'block';
+                    uploadCard.classList.add('has-file');
+
+                    // Update file info
+                    document.getElementById(`filename_${type}`).textContent = file.name;
+                    document.getElementById(`filesize_${type}`).textContent = formatFileSize(file.size);
+
+                    if (file.type.startsWith('image/')) {
+                        // Show image preview
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = document.getElementById(`img_${type}`);
+                            img.src = e.target.result;
+                            img.style.display = 'block';
+                            document.getElementById(`pdf_${type}`).style.display = 'none';
+                        };
+                        reader.readAsDataURL(file);
+                    } else if (file.type === 'application/pdf') {
+                        // Show PDF preview
+                        document.getElementById(`img_${type}`).style.display = 'none';
+                        document.getElementById(`pdf_${type}`).style.display = 'block';
+                    }
+                }
+            };
+
+            // Remove Preview Function
+            window.removePreview = function(type) {
+                const input = document.querySelector(`input[name="documents[${type}]"]`);
+                const previewContainer = document.getElementById(`preview_${type}`);
+                const uploadCard = input.closest('.upload-card');
+
+                input.value = '';
+                previewContainer.style.display = 'none';
+                uploadCard.classList.remove('has-file');
+
+                // Clear preview content
+                document.getElementById(`img_${type}`).src = '';
+                document.getElementById(`img_${type}`).style.display = 'none';
+                document.getElementById(`pdf_${type}`).style.display = 'none';
+            };
+
+            // Delete Document Function
+            window.deleteDocument = function(documentId) {
+                const deleteForm = document.getElementById('deleteForm');
+                if (deleteForm) {
+                    deleteForm.action = `/data-pribadi/document/${documentId}`;
+                    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+                    deleteModal.show();
+                }
+            };
+
+            // Format File Size
+            window.formatFileSize = function(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            };
+
+            // Auto format NIK input
+            const nikInput = document.getElementById('nik');
+            if (nikInput) {
+                nikInput.addEventListener('input', function(e) {
                     let value = e.target.value.replace(/\D/g, '');
-                    if (value.length > 5) {
-                        value = value.substring(0, 5);
+                    if (value.length > 16) {
+                        value = value.substring(0, 16);
                     }
                     e.target.value = value;
                 });
             }
-        });
 
-        // Form submission loading state
-        document.querySelector('form').addEventListener('submit', function(e) {
-            const submitBtn = document.querySelector('button[type="submit"]');
-            submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Menyimpan...';
-            submitBtn.disabled = true;
+            // Auto format phone numbers
+            ['no_telp_rumah', 'no_hp', 'no_telp_kantor'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', function(e) {
+                        let value = e.target.value.replace(/[^\d\-\+\(\)\s]/g, '');
+                        e.target.value = value;
+                    });
+                }
+            });
+
+            // Auto format postal code
+            ['kode_pos', 'kode_pos_kantor'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', function(e) {
+                        let value = e.target.value.replace(/\D/g, '');
+                        if (value.length > 5) {
+                            value = value.substring(0, 5);
+                        }
+                        e.target.value = value;
+                    });
+                }
+            });
+
+            // Form submission loading state
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const submitBtn = document.querySelector('button[type="submit"]');
+                    if (submitBtn) {
+                        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Menyimpan...';
+                        submitBtn.disabled = true;
+                    }
+                });
+            }
+
+            // Add this to your existing initializeFormHandlers() function or create a new function
+
+function initializeUppercaseInputs() {
+    // Function to convert input to uppercase on keyup
+    const inputsToUppercase = [
+        'input[name="nama_lengkap"]',
+        'input[name="nik"]', 
+        'input[name="tempat_lahir"]',
+        'input[name="kebangsaan"]',
+        'input[name="no_telp_rumah"]',
+        'input[name="no_hp"]',
+        'input[name="nama_sekolah_terakhir"]',
+        'input[name="kode_pos"]',
+        'input[name="nama_tempat_kerja"]',
+        'input[name="jabatan"]',
+        'input[name="nama_jalan_kantor"]',
+        'input[name="kode_pos_kantor"]',
+        'input[name="no_telp_kantor"]',
+        'textarea[name="alamat_rumah"]'
+    ];
+
+    inputsToUppercase.forEach(selector => {
+        $(selector).on('input keyup', function() {
+            const cursorPosition = this.selectionStart;
+            this.value = this.value.toUpperCase();
+            this.setSelectionRange(cursorPosition, cursorPosition);
         });
+    });
+
+    // Handle existing values on page load
+    inputsToUppercase.forEach(selector => {
+        $(selector).each(function() {
+            if (this.value && this.value.trim() !== '') {
+                this.value = this.value.toUpperCase();
+            }
+        });
+    });
+
+    // Form submission handler
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const inputs = form.querySelectorAll('input[type="text"]:not([name="email"]):not([type="date"]), textarea');
+            inputs.forEach(input => {
+                if (input.name !== 'email' && !input.hasAttribute('readonly')) {
+                    input.value = input.value.toUpperCase();
+                }
+            });
+        });
+    }
+}
+
+        }
     </script>
 @endpush

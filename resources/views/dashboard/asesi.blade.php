@@ -106,9 +106,8 @@
                     <div class="stat-icon">
                         <i class="bi bi-people-fill"></i>
                     </div>
-                    <a href="{{ route('asesi.apl01.index') }}">
                     <div class="stat-value counter-number" data-target="{{ $isProfileIncomplete ? 0 : ($dashboardData['total_jadwal_asesmen'] ?? 0) }}">0</div>
-                    <div class="stat-label">Jadwal Asesmen</div></a>
+                    <div class="stat-label">Jadwal Asesmen</div>
                 </div>
             </div>
 

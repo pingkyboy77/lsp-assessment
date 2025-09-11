@@ -147,6 +147,14 @@
                     <span>Skema Sertifikasi</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="{{ route('asesi.apl01.index') }}"
+                   class="nav-link {{ request()->routeIs('asesi.apl01.*') ? 'active' : '' }}"
+                   data-tooltip="Skema Sertifikasi">
+                    <i class="bi bi-archive"></i>
+                    <span>Inbox</span>
+                </a>
+            </li>
             @endrole
 
         </ul>

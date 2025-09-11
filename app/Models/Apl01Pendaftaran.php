@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class Apl01Pendaftaran extends Model
 {
@@ -12,7 +13,19 @@ class Apl01Pendaftaran extends Model
 
     protected $table = 'apl_01_pendaftarans';
 
-    protected $fillable = ['nomor_apl_01','selected_requirement_template_id', 'user_id', 'certification_scheme_id', 'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'kebangsaan', 'alamat_rumah', 'no_telp_rumah', 'kota_rumah', 'provinsi_rumah', 'kode_pos', 'no_hp', 'email', 'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 'nama_tempat_kerja', 'kategori_pekerjaan', 'nama_jalan_kantor', 'kota_kantor', 'provinsi_kantor', 'kode_pos_kantor', 'negara_kantor', 'no_telp_kantor', 'tujuan_asesmen', 'tuk', 'kategori_peserta', 'training_provider', 'pernah_asesmen_lsp', 'pernah_aplikasi', 'aplikasi_yang_digunakan', 'bisa_share_screen', 'bisa_gunakan_browser', 'nama_lengkap_ktp', 'pernyataan_benar', 'tanda_tangan_asesi', 'tanggal_tanda_tangan_asesi', 'tanda_tangan_asesor', 'tanggal_tanda_tangan_asesor', 'nama_asesor', 'requirement_answers', 'status', 'notes', 'submitted_at', 'reviewed_at', 'reviewed_by'];
+    protected $fillable = [
+        'nomor_apl_01', 'selected_requirement_template_id', 'user_id', 'certification_scheme_id', 
+        'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'kebangsaan', 
+        'alamat_rumah', 'no_telp_rumah', 'kota_rumah', 'provinsi_rumah', 'kode_pos', 'no_hp', 
+        'email', 'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 'nama_tempat_kerja', 
+        'kategori_pekerjaan', 'nama_jalan_kantor', 'kota_kantor', 'provinsi_kantor', 
+        'kode_pos_kantor', 'negara_kantor', 'no_telp_kantor', 'tujuan_asesmen', 'tuk', 
+        'kategori_peserta', 'training_provider', 'pernah_asesmen_lsp', 'pernah_aplikasi', 
+        'aplikasi_yang_digunakan', 'bisa_share_screen', 'bisa_gunakan_browser', 
+        'nama_lengkap_ktp', 'pernyataan_benar', 'tanda_tangan_asesi', 'tanggal_tanda_tangan_asesi', 
+        'tanda_tangan_asesor', 'tanggal_tanda_tangan_asesor', 'nama_asesor', 'requirement_answers', 
+        'status', 'notes', 'submitted_at', 'reviewed_at', 'reviewed_by'
+    ];
 
     protected $casts = [
         'tanggal_lahir' => 'date',
@@ -33,7 +46,10 @@ class Apl01Pendaftaran extends Model
 
         static::creating(function ($model) {
             if (empty($model->nomor_apl_01)) {
-                $model->nomor_apl_01 = NumberSequence::generate('apl_01_pendaftaran');
+                // Hanya generate jika NumberSequence class ada
+                if (class_exists('App\Models\NumberSequence')) {
+                    $model->nomor_apl_01 = \App\Models\NumberSequence::generate('apl_01_pendaftaran');
+                }
             }
         });
     }
@@ -65,6 +81,43 @@ class Apl01Pendaftaran extends Model
     public function reviewer()
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    // Region relationships - PERBAIKAN: Pastikan relasi menggunakan field yang benar
+    public function kotaRumah()
+    {
+        return $this->belongsTo(RegionKab::class, 'kota_rumah', 'id');
+    }
+
+    public function provinsiRumah()
+    {
+        return $this->belongsTo(RegionProv::class, 'provinsi_rumah', 'id');
+    }
+
+    public function kotaKantor()
+    {
+        return $this->belongsTo(RegionKab::class, 'kota_kantor', 'id');
+    }
+
+    public function provinsiKantor()
+    {
+        return $this->belongsTo(RegionProv::class, 'provinsi_kantor', 'id');
+    }
+
+    // PERBAIKAN: Tambahkan alias untuk backward compatibility
+    public function provinceRumah()
+    {
+        return $this->provinsiRumah();
+    }
+
+    public function provinceKantor()
+    {
+        return $this->provinsiKantor();
+    }
+
+    public function lembagaPelatihan()
+    {
+        return $this->belongsTo(LembagaPelatihan::class, 'training_provider');
     }
 
     /* ===================== SCOPES ===================== */
@@ -132,7 +185,25 @@ class Apl01Pendaftaran extends Model
 
     public function getTanggalLahirFormattedAttribute()
     {
-        return $this->tanggal_lahir?->format('d/m/Y') ?? '-';
+        if (!$this->tanggal_lahir) {
+            return '-';
+        }
+
+        // Handle string date
+        if (is_string($this->tanggal_lahir)) {
+            try {
+                return Carbon::parse($this->tanggal_lahir)->format('d/m/Y');
+            } catch (\Exception $e) {
+                return '-';
+            }
+        }
+
+        // Handle Carbon instance
+        if ($this->tanggal_lahir instanceof Carbon) {
+            return $this->tanggal_lahir->format('d/m/Y');
+        }
+
+        return '-';
     }
 
     public function getKategoriPesertaTextAttribute()
@@ -146,12 +217,14 @@ class Apl01Pendaftaran extends Model
             return '-';
         }
 
-        return is_array($this->aplikasi_yang_digunakan) ? implode(', ', $this->aplikasi_yang_digunakan) : $this->aplikasi_yang_digunakan;
+        return is_array($this->aplikasi_yang_digunakan) 
+            ? implode(', ', $this->aplikasi_yang_digunakan) 
+            : $this->aplikasi_yang_digunakan;
     }
 
     public function getIsEditableAttribute()
     {
-        return in_array($this->status, ['draft', 'rejected','open']);
+        return in_array($this->status, ['draft', 'rejected', 'open']);
     }
 
     public function getCanSubmitAttribute()
@@ -164,9 +237,19 @@ class Apl01Pendaftaran extends Model
         return $this->status === 'draft';
     }
 
+    // PERBAIKAN: Fix method getSelectedUnitsCountAttribute - harus cek relasi yang benar
     public function getSelectedUnitsCountAttribute()
     {
-        return $this->selected_units ? count($this->selected_units) : 0;
+        // Cek apakah ada relasi dengan certification scheme dan unit kompetensi
+        if ($this->certificationScheme && $this->certificationScheme->activeUnitKompetensis) {
+            return $this->certificationScheme->activeUnitKompetensis->count();
+        }
+        return 0;
+    }
+
+    public function getLembagaPelatihanNamaAttribute()
+    {
+        return $this->lembagaPelatihan->nama ?? ($this->training_provider ? 'Lembaga tidak ditemukan' : null);
     }
 
     /* ===================== STATUS MANAGEMENT ===================== */
@@ -231,7 +314,13 @@ class Apl01Pendaftaran extends Model
             return $this;
         }
 
-        $profileFields = ['nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'kebangsaan', 'alamat_rumah', 'no_telp_rumah', 'kota_rumah', 'provinsi_rumah', 'kode_pos', 'no_hp', 'email', 'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 'nama_tempat_kerja', 'kategori_pekerjaan', 'nama_jalan_kantor', 'kota_kantor', 'provinsi_kantor', 'kode_pos_kantor', 'negara_kantor', 'no_telp_kantor'];
+        $profileFields = [
+            'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 
+            'kebangsaan', 'alamat_rumah', 'no_telp_rumah', 'kota_rumah', 'provinsi_rumah', 
+            'kode_pos', 'no_hp', 'email', 'pendidikan_terakhir', 'nama_sekolah_terakhir', 
+            'jabatan', 'nama_tempat_kerja', 'kategori_pekerjaan', 'nama_jalan_kantor', 
+            'kota_kantor', 'provinsi_kantor', 'kode_pos_kantor', 'negara_kantor', 'no_telp_kantor'
+        ];
 
         $fillData = [];
         foreach ($profileFields as $field) {
@@ -252,65 +341,61 @@ class Apl01Pendaftaran extends Model
     }
 
     public function getRequirementItemAnswer($itemId)
-{
-    // Gunakan requirement_answers bukan requirement_responses
-    $answers = $this->requirement_answers ?? [];
-    return $answers[$itemId] ?? null;
-}
+    {
+        $answers = $this->requirement_answers ?? [];
+        return $answers[$itemId] ?? null;
+    }
 
     public function setRequirementItemAnswer($itemId, $value)
-{
-    // Gunakan requirement_answers bukan requirement_responses
-    $answers = $this->requirement_answers ?? [];
-    $answers[$itemId] = $value;
-    $this->requirement_answers = $answers;
-    return $this;
-}
-
+    {
+        $answers = $this->requirement_answers ?? [];
+        $answers[$itemId] = $value;
+        $this->requirement_answers = $answers;
+        return $this;
+    }
 
     public function getRequirementResponses()
-{
-    // Alias untuk konsistensi
-    return $this->requirement_answers ?? [];
-}
+    {
+        // Alias untuk konsistensi
+        return $this->requirement_answers ?? [];
+    }
 
-     public function getSelectedRequirementTemplate()
+    public function getSelectedRequirementTemplate()
     {
         return $this->selected_requirement_template_id;
     }
 
     public function setSelectedRequirementTemplate($templateId)
     {
-        $responses = $this->requirement_responses ?? [];
-        $responses['selected_requirement_template'] = $templateId;
-        $this->requirement_responses = $responses;
+        $this->selected_requirement_template_id = $templateId;
         return $this;
     }
 
     /* ===================== FILE MANAGEMENT ===================== */
 
     public function hasRequirementFile($itemId)
-{
-    $answer = $this->getRequirementItemAnswer($itemId);
-    return $answer && is_string($answer) && Storage::disk('public')->exists($answer);
-}
+    {
+        $answer = $this->getRequirementItemAnswer($itemId);
+        return $answer && is_string($answer) && Storage::disk('public')->exists($answer);
+    }
 
     public function getRequirementFileUrl($itemId)
-{
-    $answer = $this->getRequirementItemAnswer($itemId);
-    if ($answer && is_string($answer) && Storage::disk('public')->exists($answer)) {
-        return Storage::url($answer);
+    {
+        $answer = $this->getRequirementItemAnswer($itemId);
+        if ($answer && is_string($answer) && Storage::disk('public')->exists($answer)) {
+            return Storage::url($answer);
+        }
+        return null;
     }
-    return null;
-}
+
     public function getRequirementFileName($itemId)
-{
-    $answer = $this->getRequirementItemAnswer($itemId);
-    if ($answer && is_string($answer)) {
-        return basename($answer);
+    {
+        $answer = $this->getRequirementItemAnswer($itemId);
+        if ($answer && is_string($answer)) {
+            return basename($answer);
+        }
+        return null;
     }
-    return null;
-}
 
     public function deleteRequirementFile($itemId)
     {
@@ -324,15 +409,15 @@ class Apl01Pendaftaran extends Model
     }
 
     private function cleanupFiles()
-{
-    if ($this->requirement_answers) {
-        foreach ($this->requirement_answers as $itemId => $answer) {
-            if (is_string($answer) && Storage::disk('public')->exists($answer)) {
-                Storage::disk('public')->delete($answer);
+    {
+        if ($this->requirement_answers) {
+            foreach ($this->requirement_answers as $itemId => $answer) {
+                if (is_string($answer) && Storage::disk('public')->exists($answer)) {
+                    Storage::disk('public')->delete($answer);
+                }
             }
         }
     }
-}
 
     /* ===================== DIGITAL SIGNATURE ===================== */
 
@@ -363,32 +448,39 @@ class Apl01Pendaftaran extends Model
         return !empty($this->tanda_tangan_asesor);
     }
 
-    /* ===================== UNIT KOMPETENSI MANAGEMENT ===================== */
+    /* ===================== UNIT KOMPETENSI MANAGEMENT - PERBAIKAN ===================== */
 
+    // PERBAIKAN: Method ini perlu diperbaiki karena tidak ada field selected_units di fillable
     public function getSelectedUnitsInfo()
     {
-        if (!$this->selected_units || !$this->certificationScheme) {
-            return collect();
+        // Karena semua unit dalam skema otomatis dipilih, return semua active units
+        if ($this->certificationScheme) {
+            return $this->certificationScheme->activeUnitKompetensis ?? collect();
         }
-
-        return $this->certificationScheme->units()->whereIn('id', $this->selected_units)->get();
+        return collect();
     }
 
     public function getSelectedUnitsWithInfo()
     {
-        if (!$this->selected_units || !$this->certificationScheme) {
-            return collect();
+        // Return semua unit aktif dari skema sertifikasi
+        if ($this->certificationScheme) {
+            return $this->certificationScheme->activeUnitKompetensis ?? collect();
         }
-
-        return $this->certificationScheme->activeUnitKompetensis()->whereIn('id', $this->selected_units)->get();
+        return collect();
     }
 
-    /* ===================== TEMPLATE REQUIREMENT VALIDATION ===================== */
+    /* ===================== TEMPLATE REQUIREMENT VALIDATION - PERBAIKAN ===================== */
 
     public function getTemplateRequirementResponses($templateId)
     {
-        $allResponses = $this->requirement_responses ?? [];
+        $allResponses = $this->requirement_answers ?? [];
         $templateResponses = [];
+
+        // PERBAIKAN: Pastikan relasi ter-load dengan benar
+        if (!$this->certificationScheme) {
+            // Lazy load jika belum ter-load
+            $this->load('certificationScheme.requirementTemplates.activeItems');
+        }
 
         if (!$this->certificationScheme?->requirementTemplates) {
             return $templateResponses;
@@ -406,171 +498,203 @@ class Apl01Pendaftaran extends Model
         return $templateResponses;
     }
 
-   public function isTemplateRequirementComplete($templateId = null)
-{
-    $templateId = $templateId ?? $this->selected_requirement_template_id;
+    public function isTemplateRequirementComplete($templateId = null)
+    {
+        $templateId = $templateId ?? $this->selected_requirement_template_id;
 
-    if (!$templateId || !$this->certificationScheme) {
-        return false;
-    }
-
-    $template = $this->certificationScheme->requirementTemplates->find($templateId);
-    if (!$template?->activeItems) {
-        return true; // Jika tidak ada item, anggap complete
-    }
-
-    $answers = $this->requirement_answers ?? [];
-
-    foreach ($template->activeItems as $item) {
-        if (!$item->is_required) {
-            continue; // Skip item yang tidak wajib
-        }
-
-        $answer = $answers[$item->id] ?? null;
-
-        // Cek jika item kosong
-        if (empty($answer)) {
+        if (!$templateId) {
             return false;
         }
 
-        // PERBAIKAN: Validasi khusus untuk file upload
-        if ($item->type === 'file_upload' && is_string($answer)) {
-            if (!Storage::disk('public')->exists($answer)) {
+        // PERBAIKAN: Pastikan relasi ter-load
+        if (!$this->certificationScheme) {
+            $this->load('certificationScheme.requirementTemplates.activeItems');
+        }
+
+        if (!$this->certificationScheme) {
+            return false;
+        }
+
+        $template = $this->certificationScheme->requirementTemplates->find($templateId);
+        if (!$template?->activeItems) {
+            return true; // Jika tidak ada item, anggap complete
+        }
+
+        $answers = $this->requirement_answers ?? [];
+
+        foreach ($template->activeItems as $item) {
+            if (!$item->is_required) {
+                continue; // Skip item yang tidak wajib
+            }
+
+            $answer = $answers[$item->id] ?? null;
+
+            // Cek jika item kosong
+            if (empty($answer)) {
                 return false;
             }
-        }
-    }
 
-    return true;
-}
-
-    public function getTemplateCompletionPercentage($templateId = null)
-{
-    $templateId = $templateId ?? $this->selected_requirement_template_id;
-
-    if (!$templateId || !$this->certificationScheme) {
-        return 0;
-    }
-
-    $template = $this->certificationScheme->requirementTemplates->find($templateId);
-    if (!$template?->activeItems) {
-        return 100; // Jika tidak ada item, anggap 100%
-    }
-
-    $totalItems = $template->activeItems->count();
-    if ($totalItems === 0) {
-        return 100;
-    }
-
-    $completedItems = 0;
-    $answers = $this->requirement_answers ?? [];
-
-    foreach ($template->activeItems as $item) {
-        $answer = $answers[$item->id] ?? null;
-
-        if (!empty($answer)) {
-            // PERBAIKAN: Cek file upload dengan benar
+            // Validasi khusus untuk file upload
             if ($item->type === 'file_upload' && is_string($answer)) {
-                if (Storage::disk('public')->exists($answer)) {
-                    $completedItems++;
+                if (!Storage::disk('public')->exists($answer)) {
+                    return false;
                 }
-            } else {
-                $completedItems++;
             }
         }
+
+        return true;
     }
 
-    return round(($completedItems / $totalItems) * 100);
-}
+    public function getTemplateCompletionPercentage($templateId = null)
+    {
+        $templateId = $templateId ?? $this->selected_requirement_template_id;
 
-    public function getTemplateRequirementSummary($templateId = null)
-{
-    $templateId = $templateId ?? $this->selected_requirement_template_id;
+        if (!$templateId) {
+            return 0;
+        }
 
-    if (!$templateId || !$this->certificationScheme) {
-        return null;
-    }
+        // PERBAIKAN: Pastikan relasi ter-load
+        if (!$this->certificationScheme) {
+            $this->load('certificationScheme.requirementTemplates.activeItems');
+        }
 
-    $template = $this->certificationScheme->requirementTemplates->find($templateId);
-    if (!$template) {
-        return null;
-    }
+        if (!$this->certificationScheme) {
+            return 0;
+        }
 
-    $totalItems = $template->activeItems?->count() ?? 0;
-    $requiredItems = $template->activeItems?->where('is_required', true)->count() ?? 0;
-    $completedItems = 0;
-    $completedRequiredItems = 0;
+        $template = $this->certificationScheme->requirementTemplates->find($templateId);
+        if (!$template?->activeItems) {
+            return 100; // Jika tidak ada item, anggap 100%
+        }
 
-    $answers = $this->requirement_answers ?? [];
+        $totalItems = $template->activeItems->count();
+        if ($totalItems === 0) {
+            return 100;
+        }
 
-    if ($template->activeItems) {
+        $completedItems = 0;
+        $answers = $this->requirement_answers ?? [];
+
         foreach ($template->activeItems as $item) {
             $answer = $answers[$item->id] ?? null;
 
-            $isCompleted = false;
             if (!empty($answer)) {
-                // PERBAIKAN: Validasi file dengan benar
+                // Cek file upload dengan benar
                 if ($item->type === 'file_upload' && is_string($answer)) {
-                    $isCompleted = Storage::disk('public')->exists($answer);
+                    if (Storage::disk('public')->exists($answer)) {
+                        $completedItems++;
+                    }
                 } else {
-                    $isCompleted = true;
-                }
-            }
-
-            if ($isCompleted) {
-                $completedItems++;
-                if ($item->is_required) {
-                    $completedRequiredItems++;
+                    $completedItems++;
                 }
             }
         }
+
+        return round(($completedItems / $totalItems) * 100);
     }
 
-    return [
-        'template_name' => $template->name,
-        'total_items' => $totalItems,
-        'required_items' => $requiredItems,
-        'completed_items' => $completedItems,
-        'completed_required_items' => $completedRequiredItems,
-        'completion_percentage' => $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 100,
-        'required_completion_percentage' => $requiredItems > 0 ? round(($completedRequiredItems / $requiredItems) * 100) : 100,
-        'is_complete' => $completedRequiredItems === $requiredItems,
-    ];
-}
+    public function getTemplateRequirementSummary($templateId = null)
+    {
+        $templateId = $templateId ?? $this->selected_requirement_template_id;
 
-    /* ===================== FORM COMPLETION VALIDATION ===================== */
+        if (!$templateId) {
+            return null;
+        }
+
+        // PERBAIKAN: Pastikan relasi ter-load
+        if (!$this->certificationScheme) {
+            $this->load('certificationScheme.requirementTemplates.activeItems');
+        }
+
+        if (!$this->certificationScheme) {
+            return null;
+        }
+
+        $template = $this->certificationScheme->requirementTemplates->find($templateId);
+        if (!$template) {
+            return null;
+        }
+
+        $totalItems = $template->activeItems?->count() ?? 0;
+        $requiredItems = $template->activeItems?->where('is_required', true)->count() ?? 0;
+        $completedItems = 0;
+        $completedRequiredItems = 0;
+
+        $answers = $this->requirement_answers ?? [];
+
+        if ($template->activeItems) {
+            foreach ($template->activeItems as $item) {
+                $answer = $answers[$item->id] ?? null;
+
+                $isCompleted = false;
+                if (!empty($answer)) {
+                    // Validasi file dengan benar
+                    if ($item->type === 'file_upload' && is_string($answer)) {
+                        $isCompleted = Storage::disk('public')->exists($answer);
+                    } else {
+                        $isCompleted = true;
+                    }
+                }
+
+                if ($isCompleted) {
+                    $completedItems++;
+                    if ($item->is_required) {
+                        $completedRequiredItems++;
+                    }
+                }
+            }
+        }
+
+        return [
+            'template_name' => $template->name,
+            'total_items' => $totalItems,
+            'required_items' => $requiredItems,
+            'completed_items' => $completedItems,
+            'completed_required_items' => $completedRequiredItems,
+            'completion_percentage' => $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 100,
+            'required_completion_percentage' => $requiredItems > 0 ? round(($completedRequiredItems / $requiredItems) * 100) : 100,
+            'is_complete' => $completedRequiredItems === $requiredItems,
+        ];
+    }
+
+    /* ===================== FORM COMPLETION VALIDATION - PERBAIKAN ===================== */
 
     public function isComplete()
-{
-    // Check basic required fields
-    $requiredFields = [
-        'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 
-        'alamat_rumah', 'kota_rumah', 'provinsi_rumah', 'no_hp', 'email', 
-        'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 
-        'nama_tempat_kerja', 'kategori_pekerjaan'
-    ];
+    {
+        // Check basic required fields
+        $requiredFields = [
+            'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 
+            'alamat_rumah', 'kota_rumah', 'provinsi_rumah', 'no_hp', 'email', 
+            'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 
+            'nama_tempat_kerja', 'kategori_pekerjaan'
+        ];
 
-    foreach ($requiredFields as $field) {
-        if (empty($this->$field)) {
-            return false;
+        foreach ($requiredFields as $field) {
+            if (empty($this->$field)) {
+                return false;
+            }
         }
+
+        // Check template requirements if applicable
+        if ($this->hasTemplateRequirements()) {
+            $selectedTemplate = $this->selected_requirement_template_id;
+            if (!$selectedTemplate || !$this->isTemplateRequirementComplete($selectedTemplate)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    // Check template requirements if applicable
-    if ($this->hasTemplateRequirements()) {
-        $selectedTemplate = $this->selected_requirement_template_id;
-        if (!$selectedTemplate || !$this->isTemplateRequirementComplete($selectedTemplate)) {
-            return false;
+    private function hasTemplateRequirements()
+    {
+        // PERBAIKAN: Pastikan relasi ter-load
+        if (!$this->certificationScheme) {
+            $this->load('certificationScheme.requirementTemplates');
         }
+        
+        return $this->certificationScheme?->requirementTemplates?->count() > 0;
     }
-
-    return true;
-}
-
-   private function hasTemplateRequirements()
-{
-    return $this->certificationScheme?->requirementTemplates?->count() > 0;
-}
 
     /* ===================== UTILITY METHODS ===================== */
 
@@ -582,7 +706,10 @@ class Apl01Pendaftaran extends Model
 
         $year = date('Y');
         $month = date('m');
-        $lastNumber = static::whereNotNull('nomor_apl_01')->whereYear('created_at', $year)->whereMonth('created_at', $month)->count();
+        $lastNumber = static::whereNotNull('nomor_apl_01')
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->count();
 
         $number = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
         $this->nomor_apl_01 = "APL01/{$year}/{$month}/{$number}";
@@ -591,48 +718,48 @@ class Apl01Pendaftaran extends Model
         return $this->nomor_apl_01;
     }
 
-    /* ===================== HELPER METHODS ===================== */
+    /* ===================== HELPER METHODS - PERBAIKAN ===================== */
 
     public function getCompletionPercentage()
-{
-    $totalSections = 3; // Basic info, template requirements, signature
-    $completedSections = 0;
+    {
+        $totalSections = 3; // Basic info, template requirements, signature
+        $completedSections = 0;
 
-    // 1. Basic info completion
-    $requiredFields = [
-        'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 
-        'alamat_rumah', 'kota_rumah', 'provinsi_rumah', 'no_hp', 'email', 
-        'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 
-        'nama_tempat_kerja', 'kategori_pekerjaan'
-    ];
+        // 1. Basic info completion
+        $requiredFields = [
+            'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 
+            'alamat_rumah', 'kota_rumah', 'provinsi_rumah', 'no_hp', 'email', 
+            'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 
+            'nama_tempat_kerja', 'kategori_pekerjaan'
+        ];
 
-    $completedFields = 0;
-    foreach ($requiredFields as $field) {
-        if (!empty($this->$field)) {
-            $completedFields++;
+        $completedFields = 0;
+        foreach ($requiredFields as $field) {
+            if (!empty($this->$field)) {
+                $completedFields++;
+            }
         }
-    }
-    
-    if ($completedFields === count($requiredFields)) {
-        $completedSections++;
-    }
-
-    // 2. Template requirements completion
-    if ($this->hasTemplateRequirements()) {
-        if ($this->selected_requirement_template_id && $this->isTemplateRequirementComplete()) {
+        
+        if ($completedFields === count($requiredFields)) {
             $completedSections++;
         }
-    } else {
-        $completedSections++; // No template requirements = completed
-    }
 
-    // 3. Signature completion (only for submitted forms)
-    if ($this->status === 'draft' || !empty($this->tanda_tangan_asesi)) {
-        $completedSections++;
-    }
+        // 2. Template requirements completion
+        if ($this->hasTemplateRequirements()) {
+            if ($this->selected_requirement_template_id && $this->isTemplateRequirementComplete()) {
+                $completedSections++;
+            }
+        } else {
+            $completedSections++; // No template requirements = completed
+        }
 
-    return round(($completedSections / $totalSections) * 100);
-}
+        // 3. Signature completion (only for submitted forms)
+        if ($this->status === 'draft' || !empty($this->tanda_tangan_asesi)) {
+            $completedSections++;
+        }
+
+        return round(($completedSections / $totalSections) * 100);
+    }
 
     public function getSummaryData()
     {
@@ -658,46 +785,39 @@ class Apl01Pendaftaran extends Model
                 'nama_sekolah_terakhir' => $this->nama_sekolah_terakhir,
             ],
             'assessment' => [
-                'tujuan_asesmen_radio' => $this->tujuan_asesmen_radio,
+                'tujuan_asesmen' => $this->tujuan_asesmen,
                 'kategori_peserta' => $this->kategori_peserta_text,
                 'selected_units_count' => $this->selected_units_count,
             ],
             'status' => [
                 'status' => $this->status_text,
-                'submitted_at' => $this->submitted_at?->format('d/m/Y H:i'),
+                'submitted_at' => $this->submitted_at ? $this->formatDatetime($this->submitted_at) : null,
                 'completion_percentage' => $this->getCompletionPercentage(),
             ],
         ];
     }
 
-    public function lembagaPelatihan()
+    /**
+     * Helper method to format datetime safely
+     */
+    private function formatDatetime($datetime)
     {
-        return $this->belongsTo(LembagaPelatihan::class, 'training_provider');
-    }
+        if (!$datetime) {
+            return null;
+        }
 
-    // You might also want to add this accessor for better handling
-    public function getLembagaPelatihanNamaAttribute()
-    {
-        return $this->lembagaPelatihan->nama ?? ($this->training_provider ? 'Lembaga tidak ditemukan' : null);
-    }
-     // Region relationships - tambahan untuk region yang menggunakan ID
-    public function kotaRumah()
-    {
-        return $this->belongsTo(RegionKab::class, 'kota_rumah');
-    }
+        if (is_string($datetime)) {
+            try {
+                return Carbon::parse($datetime)->format('d/m/Y H:i');
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
 
-    public function provinsiRumah()
-    {
-        return $this->belongsTo(RegionProv::class, 'provinsi_rumah');
-    }
+        if ($datetime instanceof Carbon) {
+            return $datetime->format('d/m/Y H:i');
+        }
 
-    public function kotaKantor()
-    {
-        return $this->belongsTo(RegionKab::class, 'kota_kantor');
-    }
-
-    public function provinsiKantor()
-    {
-        return $this->belongsTo(RegionProv::class, 'provinsi_kantor');
+        return null;
     }
 }

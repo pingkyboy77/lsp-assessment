@@ -117,10 +117,15 @@ class CertificationSchemeController extends Controller
                         ' . $statusAction . '
                         
                         <!-- Delete Button -->
-                        <button type="button" class="btn btn-outline-danger btn-xs delete-btn" 
-                                data-id="' . $row->id . '" data-name="' . $row->nama . '" title="Hapus">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                        <form id="delete-form-' . $row->id . '" action="' . route('admin.certification-schemes.destroy', $row->id) . '" 
+              method="POST" style="display: none;">
+            ' . csrf_field() . '
+            ' . method_field('DELETE') . '
+        </form>
+        <button type="button" class="btn btn-outline-danger btn-xs delete-btn" 
+                data-id="' . $row->id . '" data-name="' . htmlspecialchars($row->nama, ENT_QUOTES) . '" title="Hapus">
+            <i class="bi bi-trash"></i>
+        </button>
                     </div>
                     ';
                 })
@@ -133,10 +138,12 @@ class CertificationSchemeController extends Controller
     }
 
     public function create()
-    {
-        $fields = Field::orderBy('bidang')->get();
-        return view('admin.certification-schemes.create', compact('fields'));
-    }
+{
+    $fields = Field::orderBy('bidang')->get();
+    $templates = $this->prepareTemplatesForView();
+    
+    return view('admin.certification-schemes.create', compact('fields', 'templates'));
+}
 
     public function store(Request $request)
     {
@@ -214,10 +221,67 @@ class CertificationSchemeController extends Controller
 }
 
     public function edit(CertificationScheme $certificationScheme)
-    {
-        $fields = Field::orderBy('bidang')->get();
-        return view('admin.certification-schemes.edit', compact('certificationScheme', 'fields'));
+{
+    $fields = Field::orderBy('bidang')->get();
+    
+    // Load existing templates for the certification scheme
+    $certificationScheme->load([
+        'requirementTemplates' => function($query) {
+            $query->withPivot('is_active', 'sort_order')->orderByPivot('sort_order');
+        },
+        'requirementTemplates.items' => function($query) {
+            $query->where('is_active', true)->orderBy('sort_order');
+        }
+    ]);
+    
+    $templates = $this->prepareTemplatesForView();
+    
+    return view('admin.certification-schemes.edit', compact('certificationScheme', 'fields', 'templates'));
+}
+
+private function prepareTemplatesForView()
+{
+    $templates = RequirementTemplate::with(['items' => function($query) {
+        $query->where('is_active', true)->orderBy('sort_order');
+    }])->where('is_active', true)->orderBy('name')->get();
+
+    // Add template count and display properties to each template
+    foreach ($templates as $template) {
+        $template->items_count = $template->items->count();
+        
+        // Add type display for better readability
+        switch ($template->requirement_type) {
+            case 'all_required':
+                $template->type_display = 'Semua Wajib';
+                break;
+            case 'choose_one':
+                $template->type_display = 'Pilih Satu';
+                break;
+            case 'choose_min':
+                $template->type_display = 'Pilih Minimal';
+                break;
+            default:
+                $template->type_display = 'Tidak Diketahui';
+        }
+
+        // Add requirement description for better understanding
+        switch ($template->requirement_type) {
+            case 'all_required':
+                $template->requirement_description = 'User harus mengupload semua ' . $template->items_count . ' dokumen';
+                break;
+            case 'choose_one':
+                $template->requirement_description = 'User pilih 1 dari ' . $template->items_count . ' dokumen';
+                break;
+            case 'choose_min':
+                $template->requirement_description = 'User pilih minimal beberapa dari ' . $template->items_count . ' dokumen';
+                break;
+            default:
+                $template->requirement_description = 'Tipe requirement tidak diketahui';
+        }
     }
+    
+    return $templates;
+}
 
     public function update(Request $request, CertificationScheme $certificationScheme)
     {
@@ -270,10 +334,13 @@ class CertificationSchemeController extends Controller
             $schemeName = $certificationScheme->nama;
             $certificationScheme->delete();
 
-            return response()->json([
-                'success' => true,
-                'message' => "Skema sertifikasi '{$schemeName}' berhasil dihapus."
-            ]);
+            // return response()->json([
+            //     'success' => true,
+            //     'message' => "Skema sertifikasi '{$schemeName}' berhasil dihapus."
+            // ]);
+            return redirect()
+                ->route('admin.certification-schemes.index')
+                ->with('success', 'Skema sertifikasi berhasil diha[us.');
         } catch (\Exception $e) {
             Log::error('Error deleting certification scheme: ' . $e->getMessage());
             return response()->json([

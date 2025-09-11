@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\UserProfile;
 use App\Models\UserDocument;
+use App\Models\RegionKab;
+use App\Models\RegionProv;
+use App\Models\Pekerjaan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -18,8 +21,11 @@ class DataPribadiController extends Controller
             $userId = Auth::id();
             $profile = UserProfile::where('user_id', $userId)->first();
             $documents = UserDocument::where('user_id', $userId)->get();
-
-            return view('asesi.data-pribadi', compact('profile', 'documents'));
+            
+            // Load cities with their provinces for dynamic dropdown
+            $cities = RegionKab::with('province')->orderBy('name')->get();
+            
+            return view('asesi.data-pribadi', compact('profile', 'documents', 'cities'));
         } catch (Exception $e) {
             return back()->with('error', 'Terjadi kesalahan saat memuat data: ' . $e->getMessage());
         }
@@ -27,6 +33,9 @@ class DataPribadiController extends Controller
 
     public function store(Request $request)
     {
+        // Convert inputs to uppercase before validation
+        $this->convertInputsToUppercase($request);
+        
         // Validasi sesuai dengan struktur migration
         try {
             $request->validate([
@@ -41,8 +50,8 @@ class DataPribadiController extends Controller
                 // Alamat Rumah
                 'alamat_rumah' => 'nullable|string',
                 'no_telp_rumah' => 'nullable|string|max:20',
-                'kota_rumah' => 'nullable|string|max:255',
-                'provinsi_rumah' => 'nullable|string|max:255',
+                'kota_rumah' => 'nullable|exists:region_kab,id', // Fixed table name
+                'provinsi_rumah' => 'nullable|exists:region_prov,id', // Fixed table name
                 'kode_pos' => 'nullable|string|max:10',
                 'no_hp' => 'nullable|string|max:20',
                 'email' => 'nullable|email|max:255',
@@ -60,8 +69,8 @@ class DataPribadiController extends Controller
                 // Alamat Kantor
                 'alamat_kantor' => 'nullable|string',
                 'nama_jalan_kantor' => 'nullable|string|max:255',
-                'kota_kantor' => 'nullable|string|max:255',
-                'provinsi_kantor' => 'nullable|string|max:255',
+                'kota_kantor' => 'nullable|exists:region_kab,id', // Fixed table name
+                'provinsi_kantor' => 'nullable|exists:region_prov,id', // Fixed table name
                 'kode_pos_kantor' => 'nullable|string|max:10',
                 'negara_kantor' => 'nullable|string|max:255',
                 'no_telp_kantor' => 'nullable|string|max:20',
@@ -80,7 +89,7 @@ class DataPribadiController extends Controller
         try {
             $userId = Auth::id();
             
-            // Simpan atau update profile dengan semua field sesuai migration
+            // Prepare profile data for storage
             $profileData = $request->only([
                 // Data Personal
                 'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'kebangsaan',
@@ -105,6 +114,14 @@ class DataPribadiController extends Controller
             // Set default value untuk negara_kantor jika tidak ada
             if (empty($profileData['negara_kantor'])) {
                 $profileData['negara_kantor'] = 'Indonesia';
+            }
+
+            // Convert empty strings to null for foreign key fields
+            $foreignKeyFields = ['kota_rumah', 'provinsi_rumah', 'kota_kantor', 'provinsi_kantor'];
+            foreach ($foreignKeyFields as $field) {
+                if (empty($profileData[$field])) {
+                    $profileData[$field] = null;
+                }
             }
 
             $profile = UserProfile::updateOrCreate(
@@ -170,6 +187,44 @@ class DataPribadiController extends Controller
             return redirect()->back()
                            ->with('error', 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage())
                            ->withInput();
+        }
+    }
+
+    /**
+     * Convert specific inputs to uppercase
+     */
+    private function convertInputsToUppercase(Request $request)
+    {
+        $fieldsToUppercase = [
+            'nama_lengkap',
+            'nik',
+            'tempat_lahir',
+            'kebangsaan',
+            'alamat_rumah',
+            'no_telp_rumah',
+            'no_hp',
+            'nama_sekolah_terakhir',
+            'jabatan',
+            'nama_tempat_kerja',
+            'nama_jalan_kantor',
+            'no_telp_kantor',
+            'kode_pos',
+            'kode_pos_kantor'
+        ];
+
+        foreach ($fieldsToUppercase as $field) {
+            if ($request->has($field) && !empty($request->input($field))) {
+                $request->merge([
+                    $field => strtoupper($request->input($field))
+                ]);
+            }
+        }
+
+        // Keep email lowercase
+        if ($request->has('email') && !empty($request->input('email'))) {
+            $request->merge([
+                'email' => strtolower($request->input('email'))
+            ]);
         }
     }
 
