@@ -351,11 +351,6 @@ class AsesorAk07Controller extends Controller
 
         $ak07 = Ak07CeklisePenyesuaian::with(['mapa', 'asesor', 'asesi', 'certificationScheme'])->findOrFail($ak07Id);
 
-        // Check authorization
-        if ($user->id !== $ak07->asesor_id && $user->id !== $ak07->asesi_id && !$user->hasRole('admin')) {
-            abort(403, 'Unauthorized');
-        }
-
         $potensiAsesiOptions = KelompokKerja::POTENSI_ASESI_OPTIONS;
 
         return view('asesor.ak07.view', compact('ak07', 'potensiAsesiOptions'));

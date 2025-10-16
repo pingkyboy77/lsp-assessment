@@ -40,6 +40,27 @@
             height: 18px;
             cursor: pointer;
         }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.65rem;
+            font-weight: 600;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .btn-action-group {
+                flex-direction: column;
+            }
+            
+            .btn-action-group .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
     </style>
 @endpush
 
@@ -117,8 +138,6 @@
             </div>
         </div>
 
-
-
         <!-- Main Card -->
         <div class="main-card">
             <!-- Card Header -->
@@ -135,43 +154,61 @@
             <!-- Filters -->
             <div class="p-4 bg-light border-bottom">
                 <form id="filterForm">
-                    <div class="row g-3">
-                        <div class="col-lg-5 col-md-6">
-                            <label class="form-label fw-semibold small text-muted">
-                                <i class="bi bi-search me-1"></i>Cari Data
-                            </label>
-                            <input type="text" name="search" id="searchInput" class="form-control"
-                                placeholder="Nama asesi, skema, atau nomor MAPA..." value="{{ request('search') }}">
-                        </div>
-
+                    <div class="row g-3 align-items-end">
                         <div class="col-lg-4 col-md-6">
                             <label class="form-label fw-semibold small text-muted">
-                                <i class="bi bi-funnel me-1"></i>Status
+                                <i class="bi bi-search me-1"></i>Cari Nama Asesi
                             </label>
-                            <select name="status" id="statusFilter" class="form-select">
-                                <option value="">Semua (Submitted & Approved)</option>
-                                <option value="submitted" {{ request('status') === 'submitted' ? 'selected' : '' }}>
-                                    Submitted
-                                </option>
-                                <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>
-                                    Approved
-                                </option>
-                                <option value="validated" {{ request('status') === 'validated' ? 'selected' : '' }}>
-                                    Validated
-                                </option>
-                            </select>
+                            <input type="text" name="search" id="searchInput" class="form-control"
+                                placeholder="Nama asesi..." value="{{ request('search') }}">
                         </div>
 
-                        <div class="col-lg-3 col-md-12">
-                            <label class="form-label fw-semibold small text-muted d-none d-md-block">&nbsp;</label>
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label fw-semibold small text-muted">
+                                <i class="bi bi-calendar-event me-1"></i>Tanggal Dari
+                            </label>
+                            <input type="date" name="date_from" id="dateFromInput" class="form-control"
+                                value="{{ request('date_from') }}">
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label fw-semibold small text-muted">
+                                <i class="bi bi-calendar-event me-1"></i>Sampai
+                            </label>
+                            <input type="date" name="date_to" id="dateToInput" class="form-control"
+                                value="{{ request('date_to') }}">
+                        </div>
+
+                        <div class="col-lg-2 col-md-6">
                             <div class="d-flex gap-2">
-                                <button type="button" id="applyFilter" class=" btn-primary-custom flex-fill">
+                                <button type="button" id="applyFilter" class="btn-primary-custom flex-fill">
                                     <i class="bi bi-search me-1"></i>Filter
                                 </button>
-                                <button type="button" id="resetFilter" class="btn btn-outline-secondary">
+                                <button type="button" id="resetFilter" class="btn btn-outline-secondary" title="Reset Semua Filter">
                                     <i class="bi bi-arrow-clockwise"></i>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Skema Filter (Always Visible) -->
+                    <div class="row g-3 mt-2">
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label fw-semibold small text-muted">
+                                <i class="bi bi-award me-1"></i>Skema Sertifikasi
+                            </label>
+                            <select name="skema" id="skemaFilter" class="form-select">
+                                <option value="">Semua Skema</option>
+                                @php
+                                    // Get all certification schemes from database
+                                    $schemes = \App\Models\CertificationScheme::pluck('nama', 'id');
+                                @endphp
+                                @foreach($schemes as $id => $nama)
+                                    <option value="{{ $id }}" {{ request('skema') == $id ? 'selected' : '' }}>
+                                        {{ $nama }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
                 </form>
@@ -214,12 +251,12 @@
                                     <input type="checkbox" class="mapa-checkbox" id="selectAll">
                                 </th>
                                 <th style="width: 5%;">No</th>
-                                <th style="width: 15%;">Nomor MAPA</th>
-                                <th style="width: 18%;">Asesi</th>
-                                <th style="width: 18%;">Skema</th>
+                                <th style="width: 12%;">Nomor MAPA</th>
+                                <th style="width: 16%;">Skema</th>
+                                <th style="width: 16%;">Asesi</th>
                                 <th style="width: 12%;">Asesor</th>
                                 <th style="width: 10%;">Status</th>
-                                <th style="width: 12%;">Aksi</th>
+                                <th style="width: 14%;">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody">
@@ -289,10 +326,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- Info section will be populated by JS with list of MAPA -->
-                    <div id="bulkInfo" class="mb-3">
-                        <!-- List will be inserted here by JavaScript -->
-                    </div>
+                    <div id="bulkInfo" class="mb-3"></div>
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Catatan Review</label>
@@ -327,5 +361,23 @@
             bulkApproveRoute: '{{ route('admin.mapa.bulk-approve') }}',
             bulkRejectRoute: '{{ route('admin.mapa.bulk-reject') }}'
         };
+
+        // Override resetFilter function to clear all fields
+        document.getElementById('resetFilter').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('searchInput').value = '';
+            document.getElementById('dateFromInput').value = '';
+            document.getElementById('dateToInput').value = '';
+            document.getElementById('skemaFilter').value = '';
+            applyFilters();
+        });
+
+        // Initialize Bootstrap tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
     </script>
 @endpush

@@ -1,8 +1,60 @@
-{{-- resources/views/admin/mapa/show.blade.php --}}
 @extends('layouts.admin')
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/mapa-shared-styles.css') }}">
+<style>
+    .action-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #e9ecef;
+        transition: all 0.3s ease;
+    }
+    
+    .action-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .action-card .icon-wrapper {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    
+    .unlock-btn {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        border: none;
+        color: white;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .unlock-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        color: white;
+    }
+    
+    .view-form-btn {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        color: white;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .view-form-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        color: white;
+    }
+</style>
 @endpush
 
 @section('content')
@@ -28,6 +80,57 @@
         </div>
 
         <div class="card-body m-3">
+            <!-- Additional Actions for AK07 & Form Kerahasiaan -->
+            @if($mapa->ak07)
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="action-card">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-wrapper bg-info bg-opacity-10 text-info me-3">
+                                <i class="bi bi-eye-fill"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold">FR.AK.07</h6>
+                                <small class="text-muted">Status: {{ ucfirst($mapa->ak07->status) }}</small>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('admin.mapa.view-ak07', $mapa->id) }}"
+                               class="btn btn-sm btn-info flex-fill" target="_blank">
+                                <i class="bi bi-eye me-1"></i>View AK07
+                            </a>
+                            @if($mapa->ak07->status === 'completed')
+                            <button onclick="unlockAk07({{ $mapa->id }})" 
+                                    class="btn btn-sm unlock-btn flex-fill">
+                                <i class="bi bi-unlock me-1"></i>Unlock AK07
+                            </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                @if($mapa->delegasi && $mapa->delegasi->formKerahasiaan)
+                <div class="col-md-6">
+                    <div class="action-card">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-wrapper bg-success bg-opacity-10 text-success me-3">
+                                <i class="bi bi-shield-lock-fill"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold">Form Kerahasiaan</h6>
+                                <small class="text-muted">Status: {{ ucfirst($mapa->delegasi->formKerahasiaan->status) }}</small>
+                            </div>
+                        </div>
+                        <a href="{{ route('admin.mapa.view-form-kerahasiaan', $mapa->id) }}" 
+                           class="btn btn-sm view-form-btn w-100" target="_blank">
+                            <i class="bi bi-file-text me-1"></i>View Form Kerahasiaan
+                        </a>
+                    </div>
+                </div>
+                @endif
+            </div>
+            @endif
+
             <!-- Asesi & Asesor Info -->
             <div class="row mb-4">
                 <div class="col-md-6">
@@ -305,6 +408,83 @@
                 title: 'Error!',
                 text: 'Terjadi kesalahan: ' + error.message
             });
+        });
+    }
+
+    function unlockAk07(mapaId) {
+        Swal.fire({
+            title: 'Unlock AK07?',
+            html: `
+                <div class="text-start">
+                    <p class="mb-2">Tindakan ini akan:</p>
+                    <ul class="small text-muted">
+                        <li>Menghapus tanda tangan Asesi di AK07</li>
+                        <li>Menghapus Form Kerahasiaan</li>
+                        <li>Menghapus Final Recommendation</li>
+                        <li>Mereset status AK07 ke Draft</li>
+                        <li>Asesor dapat mengisi ulang AK07</li>
+                    </ul>
+                    <p class="mt-2 mb-0 text-danger small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Perhatian:</strong> Tindakan ini tidak dapat dibatalkan!
+                    </p>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f59e0b',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, Unlock',
+            cancelButtonText: 'Batal',
+            customClass: {
+                popup: 'text-start'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Memproses...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                fetch(`/admin/mapa/${mapaId}/unlock-ak07`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: data.message,
+                            timer: 2000,
+                            showConfirmButton: true
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal!',
+                            text: data.error || 'Terjadi kesalahan'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Terjadi kesalahan: ' + error.message
+                    });
+                });
+            }
         });
     }
 </script>

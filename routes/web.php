@@ -213,13 +213,16 @@ Route::prefix('admin')
                 Route::get('/{id}', [AdminMapaController::class, 'show'])->name('show');
                 Route::get('/{id}/info', [AdminMapaController::class, 'getInfo'])->name('info');
 
-                // Single Review Actions
+                // Review Actions
                 Route::post('/{id}/approve', [AdminMapaController::class, 'approve'])->name('approve');
                 Route::post('/{id}/reject', [AdminMapaController::class, 'reject'])->name('reject');
 
                 // Bulk Actions
                 Route::post('/bulk-approve', [AdminMapaController::class, 'bulkApprove'])->name('bulk-approve');
                 Route::post('/bulk-reject', [AdminMapaController::class, 'bulkReject'])->name('bulk-reject');
+                Route::get('/{id}/ak07', [AdminMapaController::class, 'viewAk07'])->name('view-ak07');
+                Route::post('/{id}/unlock-ak07', [AdminMapaController::class, 'unlockAk07'])->name('unlock-ak07');
+                Route::get('/{id}/form-kerahasiaan', [AdminMapaController::class, 'viewFormKerahasiaan'])->name('view-form-kerahasiaan');
             });
         /*
         |--------------------------------------------------------------------------
@@ -805,14 +808,14 @@ Route::prefix('asesi')
                 Route::get('/mandiri/{apl01}', [AsesiInboxController::class, 'viewTukMandiri'])->name('view-mandiri');
             });
 
-    Route::prefix('form-kerahasiaan')
-        ->name('form-kerahasiaan.')
-        ->group(function () {
-            Route::get('/', [AsesiFormKerahasiaanController::class, 'index'])->name('index');
-            Route::get('sign/{id}', [AsesiFormKerahasiaanController::class, 'sign'])->name('sign');
-            Route::post('store-signature/{id}', [AsesiFormKerahasiaanController::class, 'storeSignature'])->name('store-signature');
-            Route::get('view/{id}', [AsesiFormKerahasiaanController::class, 'view'])->name('view');
-        });
+        Route::prefix('form-kerahasiaan')
+            ->name('form-kerahasiaan.')
+            ->group(function () {
+                Route::get('/', [AsesiFormKerahasiaanController::class, 'index'])->name('index');
+                Route::get('sign/{id}', [AsesiFormKerahasiaanController::class, 'sign'])->name('sign');
+                Route::post('store-signature/{id}', [AsesiFormKerahasiaanController::class, 'storeSignature'])->name('store-signature');
+                Route::get('view/{id}', [AsesiFormKerahasiaanController::class, 'view'])->name('view');
+            });
     });
 
 /*

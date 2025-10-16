@@ -1,7 +1,7 @@
 // public/js/admin/mapa-index.js
 
 let currentMapaId = null;
-let selectedMapaIds = new Map(); // Changed from Set to Map to store data
+let selectedMapaIds = new Map();
 let bulkActionType = null;
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -43,6 +43,17 @@ function initializeEventListeners() {
             }
         });
         updateBulkActionBar();
+    });
+
+    // Pagination links delegation
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.pagination a')) {
+            e.preventDefault();
+            const url = e.target.closest('.pagination a').getAttribute('href');
+            if (url) {
+                loadPage(url);
+            }
+        }
     });
 }
 
@@ -94,8 +105,41 @@ function updateBulkActionBar() {
 function clearSelection() {
     selectedMapaIds.clear();
     document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
-    document.getElementById('selectAll').checked = false;
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+    }
     updateBulkActionBar();
+}
+
+function loadPage(url) {
+    showLoading();
+    
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTableContent(data);
+            // Update URL without reload
+            window.history.pushState({}, '', url);
+        }
+        hideLoading();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        hideLoading();
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Gagal memuat data'
+        });
+    });
 }
 
 function applyFilters() {
@@ -114,17 +158,7 @@ function applyFilters() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            document.getElementById('tableBody').innerHTML = data.html;
-            updatePagination(data);
-            updateStats(data.stats);
-            
-            // Reset selections
-            selectedMapaIds.clear();
-            updateBulkActionBar();
-            
-            // Re-initialize checkboxes
-            initializeCheckboxes();
-            
+            updateTableContent(data);
             // Update URL
             window.history.pushState({}, '', `${window.mapaAdminConfig.indexRoute}?${params.toString()}`);
         }
@@ -141,6 +175,26 @@ function applyFilters() {
     });
 }
 
+function updateTableContent(data) {
+    // Update table body
+    document.getElementById('tableBody').innerHTML = data.html;
+    
+    // Update pagination
+    updatePagination(data);
+    
+    // Update stats if provided
+    if (data.stats) {
+        updateStats(data.stats);
+    }
+    
+    // Reset selections
+    selectedMapaIds.clear();
+    updateBulkActionBar();
+    
+    // Re-initialize checkboxes
+    initializeCheckboxes();
+}
+
 function resetFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('statusFilter').value = '';
@@ -148,24 +202,33 @@ function resetFilters() {
 }
 
 function updatePagination(data) {
-    const paginationInfo = document.getElementById('paginationInfo');
-    const paginationLinks = document.getElementById('paginationLinks');
+    const paginationContainer = document.getElementById('paginationContainer');
     
-    if (data.pagination.total > 0) {
+    if (data.pagination && data.pagination.total > 0) {
         const firstItem = (data.pagination.current_page - 1) * data.pagination.per_page + 1;
         const lastItem = Math.min(data.pagination.current_page * data.pagination.per_page, data.pagination.total);
         
-        paginationInfo.textContent = `Menampilkan ${firstItem} - ${lastItem} dari ${data.pagination.total} data`;
-        paginationLinks.innerHTML = data.pagination_html;
+        paginationContainer.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="text-muted small">
+                    Menampilkan ${firstItem} - ${lastItem} dari ${data.pagination.total} data
+                </div>
+                <div>
+                    ${data.pagination_html || ''}
+                </div>
+            </div>
+        `;
+    } else {
+        paginationContainer.innerHTML = '';
     }
 }
 
 function updateStats(stats) {
-    document.querySelectorAll('.counter-number').forEach(el => {
-        const key = el.dataset.target;
-        if (stats[key] !== undefined) {
+    Object.keys(stats).forEach(key => {
+        const elements = document.querySelectorAll(`[data-target="${stats[key]}"]`);
+        elements.forEach(el => {
             animateCounter(el, parseInt(stats[key]));
-        }
+        });
     });
 }
 
@@ -188,6 +251,12 @@ function animateCounter(element, target) {
 
 function showLoading() {
     const tableContainer = document.querySelector('.table-container');
+    if (!tableContainer) return;
+    
+    // Remove existing overlay if any
+    const existingOverlay = document.getElementById('loadingOverlay');
+    if (existingOverlay) existingOverlay.remove();
+    
     const overlay = document.createElement('div');
     overlay.id = 'loadingOverlay';
     overlay.style.cssText = `
@@ -330,7 +399,7 @@ function confirmReject() {
 
 function submitReview(action, mapaId, notes) {
     const modal = bootstrap.Modal.getInstance(document.getElementById('reviewModal'));
-    modal.hide();
+    if (modal) modal.hide();
     
     Swal.fire({
         title: 'Memproses...',
@@ -382,6 +451,84 @@ function submitReview(action, mapaId, notes) {
             title: 'Error!',
             text: 'Terjadi kesalahan: ' + error.message
         });
+    });
+}
+
+// Unlock AK07 from Index
+function unlockAk07FromIndex(mapaId) {
+    Swal.fire({
+        title: 'Unlock AK07?',
+        html: `
+            <div class="text-start">
+                <p class="mb-2">Tindakan ini akan:</p>
+                <ul class="small text-muted">
+                    <li>Menghapus tanda tangan Asesi di AK07</li>
+                    <li>Menghapus Form Kerahasiaan</li>
+                    <li>Menghapus Final Recommendation</li>
+                    <li>Mereset status AK07 ke Draft</li>
+                    <li>Asesor dapat mengisi ulang AK07</li>
+                </ul>
+                <p class="mt-2 mb-0 text-danger small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <strong>Perhatian:</strong> Tindakan ini tidak dapat dibatalkan!
+                </p>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#f59e0b',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Ya, Unlock',
+        cancelButtonText: 'Batal',
+        customClass: {
+            popup: 'text-start'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Memproses...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            fetch(`/admin/mapa/${mapaId}/unlock-ak07`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: true
+                    }).then(() => {
+                        applyFilters();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal!',
+                        text: data.error || 'Terjadi kesalahan'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: 'Terjadi kesalahan: ' + error.message
+                });
+            });
+        }
     });
 }
 
@@ -483,7 +630,7 @@ function confirmBulkAction() {
     }
     
     const modal = bootstrap.Modal.getInstance(document.getElementById('bulkReviewModal'));
-    modal.hide();
+    if (modal) modal.hide();
     
     const actionText = bulkActionType === 'approve' ? 'approve' : 'reject';
     const actionTitle = bulkActionType === 'approve' ? 'Approve' : 'Reject';
@@ -536,16 +683,26 @@ function submitBulkReview(action, notes) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            let errorHtml = '';
+            if (data.errors && data.errors.length > 0) {
+                errorHtml = '<div class="mt-3 text-start"><strong>Detail Error:</strong><ul class="small text-danger">';
+                data.errors.forEach(error => {
+                    errorHtml += `<li>${error}</li>`;
+                });
+                errorHtml += '</ul></div>';
+            }
+            
             Swal.fire({
-                icon: 'success',
-                title: 'Berhasil!',
+                icon: data.failed_count > 0 ? 'warning' : 'success',
+                title: 'Proses Selesai!',
                 html: `
                     <div class="text-start">
                         <p><strong>Berhasil:</strong> ${data.success_count} MAPA</p>
                         ${data.failed_count > 0 ? `<p class="text-danger"><strong>Gagal:</strong> ${data.failed_count} MAPA</p>` : ''}
+                        ${errorHtml}
                     </div>
                 `,
-                timer: 3000,
+                timer: data.failed_count > 0 ? null : 3000,
                 showConfirmButton: true
             }).then(() => {
                 clearSelection();
