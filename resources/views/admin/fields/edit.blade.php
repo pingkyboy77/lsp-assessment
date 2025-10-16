@@ -3,17 +3,26 @@
 @section('title', 'Edit Bidang')
 
 @section('content')
+
+@if (session('success'))
+        <div class="alert-success-custom">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-circle-fill me-2"></i>
+            {{ session('error') }}
+        </div>
+    @endif
     <div class="container-fluid">
         <div class="row">
             <div class="col-12">
                 <div class="main-card">
                     <div class="card-header-custom mb-4">
-                        @if (session('success'))
-                            <div class="alert-success-custom">
-                                <i class="bi bi-check-circle-fill me-2"></i>
-                                {{ session('success') }}
-                            </div>
-                        @endif
+                        
 
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -52,16 +61,14 @@
                                     </div>
 
                                     <div class="mb-3">
-                                        <label for="code_2" class="form-label">Code 2 <span
+                                        <label for="code_2" class="form-label">Scheme Code <span
                                                 class="text-danger">*</span></label>
                                         <input type="text" class="form-control @error('code_2') is-invalid @enderror"
                                             id="code_2" name="code_2" value="{{ old('code_2', $field->code_2) }}"
-                                            maxlength="10" required>
+                                            required>
                                         @error('code_2')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
-                                        <div class="form-text">Maksimal 10 karakter, akan otomatis diubah ke huruf kapital
-                                        </div>
                                     </div>
 
                                     <div class="mb-3">
@@ -106,15 +113,6 @@
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                         <div class="form-text">Kode akan otomatis diubah ke huruf kapital</div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="description" class="form-label">Deskripsi</label>
-                                        <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description"
-                                            rows="4">{{ old('description', $field->description) }}</textarea>
-                                        @error('description')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
                                     </div>
 
                                     <div class="mb-3">

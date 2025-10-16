@@ -12,6 +12,12 @@
                     {{ session('success') }}
                 </div>
             @endif
+            @if (session('error'))
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-circle-fill me-2"></i>
+                    {{ session('error') }}
+                </div>
+            @endif
 
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -27,7 +33,7 @@
                         <i class="bi bi-funnel me-2"></i>Filter
                     </button>
                     <!-- Add Button -->
-                    <a href="{{ route('admin.fields.create') }}" class="btn btn-primary-custom btn-sm text-light">
+                    <a href="{{ route('admin.fields.create') }}" class=" btn-primary-custom btn-sm text-light">
                         <i class="bi bi-plus-circle me-2 text-light"></i>Tambah Bidang
                     </a>
                 </div>
@@ -51,7 +57,7 @@
                                     <i class=""></i>Kode Bidang
                                 </th>
                                 <th style="width: 7%">
-                                    <i class=""></i>Second Code
+                                    <i class=""></i>Scheme Code
                                 </th>
                                 <th>
                                     <i class="bi bi-building me-2"></i>Bidang
@@ -104,7 +110,7 @@
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="resetFilter">
                         <i class="bi bi-x-circle me-2"></i>Reset
                     </button>
-                    <button type="button" class="btn btn-primary-custom btn-sm text-light" id="applyFilter">
+                    <button type="button" class=" btn-primary-custom btn-sm text-light" id="applyFilter">
                         <i class="bi bi-check-circle me-2"></i>Terapkan Filter
                     </button>
                 </div>
@@ -168,7 +174,7 @@
                 ],
                 order: [
                     [3, 'asc']
-                ], 
+                ],
             });
 
             // Apply Filter

@@ -27,7 +27,7 @@
                         <i class="bi bi-funnel me-2"></i>Filter
                     </button>
                     <!-- Add Button -->
-                    <a href="{{ route('admin.requirements.create') }}" class="btn btn-primary-custom btn-sm text-light">
+                    <a href="{{ route('admin.requirements.create') }}" class=" btn-primary-custom btn-sm text-light">
                         <i class="bi bi-plus-circle me-2 text-light"></i>Tambah Template
                     </a>
                 </div>
@@ -107,7 +107,7 @@
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="resetFilter">
                         <i class="bi bi-x-circle me-2"></i>Reset
                     </button>
-                    <button type="button" class="btn btn-primary-custom btn-sm text-light" id="applyFilter">
+                    <button type="button" class=" btn-primary-custom btn-sm text-light" id="applyFilter">
                         <i class="bi bi-check-circle me-2"></i>Terapkan Filter
                     </button>
                 </div>

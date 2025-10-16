@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use App\Models\CertificationScheme;
-use App\Models\UnitKompetensi;
-use App\Models\KelompokKerja;
-use App\Models\ElemenKompetensi;
-use App\Models\KriteriaKerja;
 use Illuminate\Http\Request;
+use App\Models\KelompokKerja;
+use App\Models\KriteriaKerja;
+use App\Models\PortfolioFile;
+use App\Models\UnitKompetensi;
+use App\Models\ElemenKompetensi;
 use Illuminate\Support\Facades\DB;
+use App\Models\CertificationScheme;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
 
 class UnitKompetensiController extends Controller
@@ -81,11 +82,22 @@ class UnitKompetensiController extends Controller
 
     public function show(CertificationScheme $scheme, UnitKompetensi $unitKompetensi)
     {
+        // Load data dengan benar - TAMBAHKAN portfolioFiles
         $unit = $unitKompetensi->load([
             'elemenKompetensis.kriteriaKerjas' => function ($query) {
                 $query->ordered();
             },
             'activeKelompokKerjas',
+            'portfolioFiles' => function ($query) {
+                $query->ordered();
+            }
+        ]);
+
+        // Pastikan relation dimuat dengan benar untuk semua unit dalam scheme
+        $scheme->load([
+            'unitKompetensis.portfolioFiles' => function ($query) {
+                $query->ordered();
+            }
         ]);
 
         return view('admin.unit-kompetensi.show', compact('scheme', 'unit'));
@@ -202,6 +214,7 @@ class UnitKompetensiController extends Controller
                 $newUnit->kelompokKerjas()->sync($kelompokIds);
             }
 
+            // Duplikasi Elemen Kompetensi
             foreach ($unitKompetensi->elemenKompetensis as $elemen) {
                 $newElemen = $elemen->replicate();
                 $newElemen->unit_kompetensi_id = $newUnit->id;
@@ -209,7 +222,7 @@ class UnitKompetensiController extends Controller
                 $newElemen->updated_at = now();
                 $newElemen->save();
 
-                // Kalau ada relasi turunan (misal kriteria kerja)
+                // Duplikasi Kriteria Kerja
                 foreach ($elemen->kriteriaKerjas as $kriteria) {
                     $newKriteria = $kriteria->replicate();
                     $newKriteria->elemen_kompetensi_id = $newElemen->id;
@@ -217,6 +230,15 @@ class UnitKompetensiController extends Controller
                     $newKriteria->updated_at = now();
                     $newKriteria->save();
                 }
+            }
+
+            // PERBAIKAN: Duplikasi Portfolio Files juga
+            foreach ($unitKompetensi->portfolioFiles as $portfolioFile) {
+                $newPortfolioFile = $portfolioFile->replicate();
+                $newPortfolioFile->unit_kompetensi_id = $newUnit->id;
+                $newPortfolioFile->created_at = now();
+                $newPortfolioFile->updated_at = now();
+                $newPortfolioFile->save();
             }
 
             DB::commit();

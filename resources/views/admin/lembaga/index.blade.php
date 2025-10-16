@@ -19,7 +19,7 @@
                     <p class="mb-0 text-muted">Manage and organize training institutions</p>
                 </div>
                 <div>
-                    <a href="{{ route('admin.lembaga.create') }}" class="btn btn-primary-custom btn-sm text-light">
+                    <a href="{{ route('admin.lembaga.create') }}" class=" btn-primary-custom btn-sm text-light">
                         <i class="bi bi-plus-circle me-2 text-light"></i>Add New Lembaga
                     </a>
                 </div>

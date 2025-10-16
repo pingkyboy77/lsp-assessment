@@ -12,24 +12,50 @@
                 </div>
             @endif
 
-            <div class="d-flex justify-content-between align-items-center">
+             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="mb-1 text-dark fw-bold">
                         <i class="bi bi-list-check me-2"></i>Kelola Persyaratan
                     </h5>
-                    <p class="mb-0 text-muted">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0 flex-wrap">
+                            <li class="breadcrumb-item">
+                                <a href="{{ route('admin.dashboard') }}">
+                                    <i class="bi bi-house-door"></i> Dashboard
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a href="{{ route('admin.certification-schemes.index') }}">
+                                    <i class="bi bi-award"></i> Skema Sertifikasi
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a href="{{ route('admin.certification-schemes.show', $certificationScheme) }}">
+                                    {{ Str::limit($certificationScheme->nama, 30) }}
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <i class="bi bi-list-check"></i> Persyaratan
+                            </li>
+                        </ol>
+                    </nav>
+                    <p class="mb-0 text-muted mt-1">
                         <strong>{{ $certificationScheme->code_1 }} - {{ $certificationScheme->nama }}</strong>
                     </p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ url()->previous() }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-arrow-left me-2"></i> Kembali
+                    <a href="{{ route('admin.certification-schemes.show', $certificationScheme) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left me-2"></i> Kembali ke Detail
+                    </a>
+                    <a href="{{ route('admin.certification-schemes.index') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-list me-2"></i> Daftar Skema
                     </a>
                 </div>
             </div>
         </div>
+        </div>
 
-        <div class="card-body m-3">
+        <div class="card-body mt-3">
             <!-- Scheme Information -->
             <div class="row mb-4">
                 <div class="col-md-8">

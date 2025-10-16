@@ -1,0 +1,205 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class PagesSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        $pages = [
+            // Superadmin Pages
+            [
+                'name' => 'Dashboard Admin',
+                'slug' => 'admin-dashboard',
+                'route_name' => 'admin.dashboard',
+                'icon' => 'bi bi-speedometer2',
+                'description' => 'Dashboard untuk Super Admin',
+                'group' => 'main',
+                'sort_order' => 1,
+                'allowed_roles' => json_encode(['superadmin']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'User Management',
+                'slug' => 'user-management',
+                'route_name' => 'admin.users.index',
+                'icon' => 'bi bi-people',
+                'description' => 'Mengelola pengguna sistem',
+                'group' => 'Admin Management',
+                'sort_order' => 2,
+                'allowed_roles' => json_encode(['superadmin']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Role Management',
+                'slug' => 'role-management',
+                'route_name' => 'admin.roles.index',
+                'icon' => 'bi bi-person-badge',
+                'description' => 'Mengelola role dan permission',
+                'group' => 'Admin Management',
+                'sort_order' => 3,
+                'allowed_roles' => json_encode(['superadmin']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'System Settings',
+                'slug' => 'system-settings',
+                'route_name' => 'admin.number-sequences.index',
+                'icon' => 'bi bi-gear',
+                'description' => 'Pengaturan sistem',
+                'group' => 'Admin Management',
+                'sort_order' => 4,
+                'allowed_roles' => json_encode(['superadmin']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Lembaga Pelatihan',
+                'slug' => 'lembaga-pelatihan',
+                'route_name' => 'admin.lembaga.index',
+                'icon' => 'bi bi-building',
+                'description' => 'Mengelola lembaga pelatihan',
+                'group' => 'Admin Management',
+                'sort_order' => 5,
+                'allowed_roles' => json_encode(['superadmin']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Bidang Sertifikasi',
+                'slug' => 'bidang-sertifikasi',
+                'route_name' => 'admin.fields.index',
+                'icon' => 'bi bi-diagram-3',
+                'description' => 'Mengelola bidang sertifikasi',
+                'group' => 'Admin Management',
+                'sort_order' => 6,
+                'allowed_roles' => json_encode(['superadmin']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Template Persyaratan',
+                'slug' => 'template-persyaratan',
+                'route_name' => 'admin.requirements.index',
+                'icon' => 'bi bi-file-earmark-text',
+                'description' => 'Template persyaratan sertifikasi',
+                'group' => 'Admin Management',
+                'sort_order' => 7,
+                'allowed_roles' => json_encode(['superadmin']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Skema Sertifikasi',
+                'slug' => 'skema-sertifikasi-admin',
+                'route_name' => 'admin.certification-schemes.index',
+                'icon' => 'bi bi-award',
+                'description' => 'Mengelola skema sertifikasi',
+                'group' => 'Admin Management',
+                'sort_order' => 8,
+                'allowed_roles' => json_encode(['superadmin']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Monitoring Profile',
+                'slug' => 'monitoring-profile',
+                'route_name' => 'admin.monitoring-profile.index',
+                'icon' => 'bi bi-clipboard-data',
+                'description' => 'Monitoring profile asesi',
+                'group' => 'System & Monitoring',
+                'sort_order' => 9,
+                'allowed_roles' => json_encode(['superadmin']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Monitoring APL 01',
+                'slug' => 'monitoring-apl01',
+                'route_name' => 'admin.apl01.index',
+                'icon' => 'bi bi-clipboard-check',
+                'description' => 'Monitoring APL 01',
+                'group' => 'System & Monitoring',
+                'sort_order' => 10,
+                'allowed_roles' => json_encode(['superadmin']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+
+            // Asesi Pages
+            [
+                'name' => 'Dashboard Asesi',
+                'slug' => 'asesi-dashboard',
+                'route_name' => 'asesi.dashboard',
+                'icon' => 'bi bi-speedometer2',
+                'description' => 'Dashboard untuk Asesi',
+                'group' => 'main',
+                'sort_order' => 1,
+                'allowed_roles' => json_encode(['asesi']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Profile',
+                'slug' => 'profile',
+                'route_name' => 'asesi.data-pribadi.index',
+                'icon' => 'bi bi-person-circle',
+                'description' => 'Profile asesi',
+                'group' => 'Asesi Menu',
+                'sort_order' => 2,
+                'allowed_roles' => json_encode(['asesi']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Skema Sertifikasi',
+                'slug' => 'skema-sertifikasi-asesi',
+                'route_name' => 'asesi.skema-sertifikasi.index',
+                'icon' => 'bi bi-mortarboard',
+                'description' => 'Skema sertifikasi untuk asesi',
+                'group' => 'Asesi Menu',
+                'sort_order' => 3,
+                'allowed_roles' => json_encode(['asesi']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Inbox',
+                'slug' => 'inbox',
+                'route_name' => 'asesi.apl01.index',
+                'icon' => 'bi bi-archive',
+                'description' => 'Inbox asesi',
+                'group' => 'Asesi Menu',
+                'sort_order' => 4,
+                'allowed_roles' => json_encode(['asesi']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+
+            // Page Management (untuk mengelola halaman ini)
+            [
+                'name' => 'Page Management',
+                'slug' => 'page-management',
+                'route_name' => 'admin.pages.index',
+                'icon' => 'bi bi-layout-text-sidebar',
+                'description' => 'Mengelola halaman dan menu sistem',
+                'group' => 'Admin Management',
+                'sort_order' => 11,
+                'allowed_roles' => json_encode(['superadmin']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ];
+
+        DB::table('pages')->insert($pages);
+    }
+}

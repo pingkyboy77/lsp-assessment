@@ -30,7 +30,7 @@ class AdminApl01Controller extends Controller
     public function data(Request $request)
     {
         try {
-            $query = Apl01Pendaftaran::with(['user', 'certificationScheme:id,nama,jenjang', 'reviewer:id,name', 'lembagaPelatihan:id,name', 'kotaRumah:id,name', 'provinsiRumah:id,name', 'kotaKantor:id,name', 'provinsiKantor:id,name']);
+            $query = Apl01Pendaftaran::with(['user', 'certificationScheme:id,nama,jenjang,code_1', 'reviewer:id,name', 'lembagaPelatihan:id,name', 'kotaRumah:id,name', 'provinsiRumah:id,name', 'kotaKantor:id,name', 'provinsiKantor:id,name']);
 
             // Apply date filters (default to current month if not provided)
             $dateFrom = $request->date_from ?: date('Y-m-01');
@@ -92,6 +92,7 @@ class AdminApl01Controller extends Controller
 
             // Format data for DataTables
             $formattedData = $data->map(function ($apl) {
+                // dd($apl->certificationScheme);
                 return [
                     'id' => $apl->id,
                     'nomor_apl_01' => $apl->nomor_apl_01 ?: 'DRAFT',
@@ -102,6 +103,7 @@ class AdminApl01Controller extends Controller
                     'submitted_at' => $apl->submitted_at?->toISOString(),
                     'reviewed_at' => $apl->reviewed_at?->toISOString(),
                     'certification_scheme_nama' => $apl->certificationScheme->nama ?? null,
+                    'code_1' => $apl->certificationScheme->code_1 ?? null,
                     'certification_scheme_jenjang' => $apl->certificationScheme->jenjang ?? null,
                     'units_count' => $apl->certificationScheme->activeUnitKompetensis->count() ?? 0,
                     'reviewer_name' => $apl->reviewer->name ?? null,
@@ -297,23 +299,78 @@ class AdminApl01Controller extends Controller
         try {
             $apl->load(['user', 'certificationScheme.activeUnitKompetensis', 'kotaRumah', 'provinsiRumah', 'kotaKantor', 'provinsiKantor', 'lembagaPelatihan']);
 
-            // Get user documents
-            $userDocuments = UserDocument::where('user_id', $apl->user_id)->get();
+            // Get user documents with safe file checking
+            $userDocuments = UserDocument::where('user_id', $apl->user_id)->get()->map(function ($doc) {
+                $fileExists = false;
+                $fileSize = 0;
+                $fileSizeFormatted = '0 KB';
 
-            // Get requirement documents
+                try {
+                    if ($doc->file_path && Storage::disk('public')->exists($doc->file_path)) {
+                        $fileExists = true;
+                        $fileSize = Storage::disk('public')->size($doc->file_path);
+                        $fileSizeFormatted = $doc->file_size_formatted;
+                    }
+                } catch (\Exception $e) {
+                    Log::warning("File check failed for UserDocument {$doc->id}: " . $e->getMessage());
+                    $fileExists = false;
+                }
+
+                return [
+                    'id' => $doc->id,
+                    'jenis_dokumen' => $doc->document_type,
+                    'document_type' => $doc->document_type,
+                    'original_name' => $doc->original_name,
+                    'file_url' => $fileExists ? $doc->file_url : null,
+                    'file_exists' => $fileExists,
+                    'file_size' => $fileSize,
+                    'file_size_kb' => round($fileSize / 1024, 2),
+                    'file_size_formatted' => $fileSizeFormatted,
+                    'file_extension' => $doc->file_extension ?: 'unknown',
+                    'file_type_text' => $doc->file_type_text,
+                    'description' => $doc->description,
+                ];
+            });
+
+            // Get requirement documents with safe file checking
             $requirementDocuments = [];
             if ($apl->requirement_answers && is_array($apl->requirement_answers)) {
                 foreach ($apl->requirement_answers as $itemId => $filePath) {
-                    if ($filePath && Storage::disk('public')->exists($filePath)) {
+                    try {
+                        // Skip if no file path
+                        if (!$filePath) continue;
+
+                        // Get requirement item info
                         $requirementItem = RequirementItem::find($itemId);
-                        $requirementDocuments[] = [
-                            'item_id' => $itemId,
-                            'item_name' => $requirementItem ? $requirementItem->document_name : "Dokumen {$itemId}",
-                            'file_path' => $filePath,
-                            'file_url' => Storage::url($filePath),
-                            'file_size' => Storage::disk('public')->size($filePath),
-                            'file_extension' => pathinfo($filePath, PATHINFO_EXTENSION),
-                        ];
+                        $itemName = $requirementItem ? $requirementItem->document_name : "Dokumen {$itemId}";
+
+                        // Check if file exists
+                        $fileExists = false;
+                        $fileSize = 0;
+                        $fileUrl = null;
+
+                        if (Storage::disk('public')->exists($filePath)) {
+                            $fileExists = true;
+                            $fileSize = Storage::disk('public')->size($filePath);
+                            $fileUrl = Storage::url($filePath);
+                        }
+
+                        // Only add to array if we have valid data
+                        if ($fileExists && $fileUrl) {
+                            $requirementDocuments[] = [
+                                'item_id' => $itemId,
+                                'item_name' => $itemName,
+                                'file_path' => $filePath,
+                                'file_url' => $fileUrl,
+                                'file_size' => $fileSize,
+                                'file_extension' => pathinfo($filePath, PATHINFO_EXTENSION) ?: 'unknown',
+                                'file_exists' => true
+                            ];
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning("Requirement file check failed for item {$itemId}: " . $e->getMessage());
+                        // Skip this file and continue with others
+                        continue;
                     }
                 }
             }
@@ -328,7 +385,7 @@ class AdminApl01Controller extends Controller
                         'email' => $apl->email,
                         'no_hp' => $apl->no_hp,
                         'status' => $apl->status,
-                        'status_text' => $apl->statusText,
+                        'status_text' => $apl->statusText ?? ucfirst($apl->status),
                         'submitted_at' => $apl->submitted_at?->format('d F Y H:i'),
                         'certification_scheme' => $apl->certificationScheme->nama ?? null,
                         'unit_count' => $apl->certificationScheme->activeUnitKompetensis->count() ?? 0,
@@ -338,28 +395,22 @@ class AdminApl01Controller extends Controller
                         'provinsi_kantor' => $apl->provinsiKantor->name ?? null,
                         'lembaga_pelatihan' => $apl->lembagaPelatihan->name ?? null,
                     ],
-                    'user_documents' => $userDocuments->map(function ($doc) {
-                        return [
-                            'id' => $doc->id,
-                            'jenis_dokumen' => $doc->jenis_dokumen,
-                            'file_url' => $doc->file_url,
-                            'file_exists' => $doc->file_exists,
-                            'file_size_kb' => $doc->file_size_kb,
-                            'file_extension' => pathinfo($doc->file_path, PATHINFO_EXTENSION),
-                        ];
-                    }),
+                    'user_documents' => $userDocuments->values(), // Reset array keys
                     'requirement_documents' => $requirementDocuments,
+                    'file_errors' => [], // Could be used to show which files are missing
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('APL01 Review Data Error: ' . $e->getMessage());
-            return response()->json(
-                [
-                    'success' => false,
-                    'message' => 'Gagal memuat data review: ' . $e->getMessage(),
-                ],
-                500,
-            );
+            Log::error('APL01 Review Data Error: ' . $e->getMessage(), [
+                'apl_id' => $apl->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat data review. Beberapa file mungkin tidak tersedia.',
+                'error_code' => 'REVIEW_DATA_ERROR'
+            ], 500);
         }
     }
 

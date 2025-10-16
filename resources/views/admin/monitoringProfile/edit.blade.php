@@ -410,7 +410,7 @@
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="form-actions text-center">
-                            <button type="submit" class="btn btn-primary-custom me-2 text-light">
+                            <button type="submit" class=" btn-primary-custom me-2 text-light">
                                 <i class="bi bi-save me-2"></i>Simpan Perubahan
                             </button>
                             <a href="{{ route('admin.monitoring-profile.show', $profile->id) }}" class="btn btn-secondary-custom">

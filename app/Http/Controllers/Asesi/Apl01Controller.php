@@ -20,47 +20,48 @@ use Carbon\Carbon;
 
 class Apl01Controller extends Controller
 {
-
     public function index(Request $request)
     {
         try {
             $user = Auth::user();
-            
+
             // Get APL 01 data dengan relasi menggunakan model Apl01Pendaftaran
             $apls = Apl01Pendaftaran::with(['certificationScheme', 'reviewer', 'provinsiRumah', 'kotaRumah'])
                 ->where('user_id', $user->id)
                 ->orderBy('created_at', 'desc')
                 ->get();
-            
+
             // Hitung statistik
             $stats = [
                 'total' => $apls->count(),
                 'draft' => $apls->where('status', 'draft')->count(),
-                'submitted' => $apls->whereIn('status', ['submitted', 'review', 'reviewed'])->count(),
+                'submitted' => $apls->whereIn('status', ['submitted'])->count(),
                 'approved' => $apls->where('status', 'approved')->count(),
             ];
-            
+
             // Jika request AJAX (untuk auto-refresh)
             if ($request->ajax()) {
                 return response()->json([
                     'success' => true,
                     'stats' => $stats,
-                    'apls_count' => $apls->count()
+                    'apls_count' => $apls->count(),
                 ]);
             }
-            
+
             return view('asesi.apl01.index', compact('apls', 'stats'));
-            
         } catch (\Exception $e) {
             Log::error('Error in APL 01 index: ' . $e->getMessage());
-            
+
             if ($request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Gagal memuat data APL 01'
-                ], 500);
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => 'Gagal memuat data APL 01',
+                    ],
+                    500,
+                );
             }
-            
+
             return redirect()->back()->with('error', 'Gagal memuat data APL 01');
         }
     }
@@ -78,7 +79,7 @@ class Apl01Controller extends Controller
         $scheme = $apl
             ->certificationScheme()
             ->with([
-                'activeUnitKompetensis', 
+                'activeUnitKompetensis',
                 'requirementTemplates' => function ($query) {
                     $query->wherePivot('is_active', true)->orderBy('certification_scheme_requirements.sort_order');
                 },
@@ -91,7 +92,7 @@ class Apl01Controller extends Controller
         $provinces = RegionProv::orderBy('name')->get();
         $cities = RegionKab::with('province')->orderBy('name')->get();
         $trainingProviders = LembagaPelatihan::orderBy('name')->get();
-        
+
         // Add user profile data for auto-fill
         $userProfile = $this->getUserProfileData();
 
@@ -106,61 +107,83 @@ class Apl01Controller extends Controller
     }
 
     public function create($schemeId)
-{
-    $scheme = CertificationScheme::with([
-        'activeUnitKompetensis',
-        'requirementTemplates' => function ($query) {
-            $query->wherePivot('is_active', true)->orderBy('certification_scheme_requirements.sort_order');
-        },
-        'requirementTemplates.activeItems' => function ($query) {
-            $query->where('is_active', true)->orderBy('sort_order');
-        },
-    ])->findOrFail($schemeId);
-    // Check if user already has APL for this scheme
-    $existingApl = Apl01Pendaftaran::where('user_id', Auth::id())
-        ->where('certification_scheme_id', $schemeId)
-        ->first();
+    {
+        $scheme = CertificationScheme::with([
+            'activeUnitKompetensis',
+            'requirementTemplates' => function ($query) {
+                $query->wherePivot('is_active', true)->orderBy('certification_scheme_requirements.sort_order');
+            },
+            'requirementTemplates.activeItems' => function ($query) {
+                $query->where('is_active', true)->orderBy('sort_order');
+            },
+        ])->findOrFail($schemeId);
+        // Check if user already has APL for this scheme
+        $existingApl = Apl01Pendaftaran::where('user_id', Auth::id())->where('certification_scheme_id', $schemeId)->first();
 
-    if ($existingApl) {
-        return redirect()->route('asesi.apl01.edit', $existingApl->id)
-            ->with('info', 'Anda sudah memiliki APL 01 untuk skema ini.');
+        if ($existingApl) {
+            return redirect()->route('asesi.apl01.edit', $existingApl->id)->with('info', 'Anda sudah memiliki APL 01 untuk skema ini.');
+        }
+
+        $provinces = RegionProv::orderBy('name')->get();
+        $cities = RegionKab::with('province')->orderBy('name')->get();
+        $trainingProviders = LembagaPelatihan::orderBy('name')->get();
+
+        $existingApl = null;
+
+        // Add user profile data for auto-fill
+        $userProfile = $this->getUserProfileData();
+        // dd(vars: $userProfile);
+        return view('asesi.apl01.form', [
+            'scheme' => $scheme,
+            'existingApl' => $existingApl,
+            'provinces' => $provinces,
+            'cities' => $cities,
+            'trainingProviders' => $trainingProviders,
+            'userProfile' => $userProfile,
+        ]);
     }
 
-    $provinces = RegionProv::orderBy('name')->get();
-    $cities = RegionKab::with('province')->orderBy('name')->get();
-    $trainingProviders = LembagaPelatihan::orderBy('name')->get();
-
-    $existingApl = null;
-    
-    // Add user profile data for auto-fill
-    $userProfile = $this->getUserProfileData();
-    // dd(vars: $userProfile);
-    return view('asesi.apl01.form', [
-        'scheme' => $scheme,
-        'existingApl' => $existingApl,
-        'provinces' => $provinces,
-        'cities' => $cities,
-        'trainingProviders' => $trainingProviders,
-        'userProfile' => $userProfile,
-    ]);
-}
-    
     /**
      * Get user profile data for auto-fill
      */
     private function getUserProfileData()
     {
         $user = Auth::user();
-        
-        // Load user with profile relationship
-        $userWithProfile = $user->load('profile');
-        
-        if (!$userWithProfile->profile) {
-            return null;
+
+        // Load profile relation
+        $user->load('profile');
+
+        // Jika profile tidak ada, return empty array
+        if (!$user->profile) {
+            return [
+                'nama_lengkap' => '',
+                'nik' => '',
+                'tempat_lahir' => '',
+                'tanggal_lahir' => null,
+                'jenis_kelamin' => '',
+                'kebangsaan' => 'Indonesia',
+                'alamat_rumah' => '',
+                'kota_rumah' => '',
+                'provinsi_rumah' => '',
+                'kode_pos' => '',
+                'no_telp_rumah' => '',
+                'no_hp' => '',
+                'email' => $user->email ?? '',
+                'pendidikan_terakhir' => '',
+                'nama_sekolah_terakhir' => '',
+                'nama_tempat_kerja' => '',
+                'kategori_pekerjaan' => '',
+                'jabatan' => '',
+                'nama_jalan_kantor' => '',
+                'kota_kantor' => '',
+                'provinsi_kantor' => '',
+                'kode_pos_kantor' => '',
+                'no_telp_kantor' => '',
+            ];
         }
-        
-        $profile = $userWithProfile->profile;
-        
+
+        $profile = $user->profile;
+
         return [
             'nama_lengkap' => $profile->nama_lengkap ?? '',
             'nik' => $profile->nik ?? '',
@@ -174,7 +197,7 @@ class Apl01Controller extends Controller
             'kode_pos' => $profile->kode_pos ?? '',
             'no_telp_rumah' => $profile->no_telp_rumah ?? '',
             'no_hp' => $profile->no_hp ?? '',
-            'email' => $profile->email ?? $user->email ?? '',
+            'email' => $profile->email ?? ($user->email ?? ''),
             'pendidikan_terakhir' => $profile->pendidikan_terakhir ?? '',
             'nama_sekolah_terakhir' => $profile->nama_sekolah_terakhir ?? '',
             'nama_tempat_kerja' => $profile->nama_tempat_kerja ?? '',
@@ -184,7 +207,7 @@ class Apl01Controller extends Controller
             'kota_kantor' => $profile->kota_kantor ?? '',
             'provinsi_kantor' => $profile->provinsi_kantor ?? '',
             'kode_pos_kantor' => $profile->kode_pos_kantor ?? '',
-            'no_telp_kantor' => $profile->no_telp_kantor ?? ''
+            'no_telp_kantor' => $profile->no_telp_kantor ?? '',
         ];
     }
 
@@ -215,22 +238,14 @@ class Apl01Controller extends Controller
     public function store(Request $request, $schemeId)
     {
         $scheme = CertificationScheme::with('requirementTemplates.activeItems')->findOrFail($schemeId);
-
         // Build validation rules dynamically
         $rules = $this->getValidationRules($scheme, $request);
-
         $validated = $request->validate($rules);
 
         try {
             DB::beginTransaction();
 
-            // Process signature if provided
-            $signatureData = null;
-            if ($request->filled('tanda_tangan_asesi') && $request->input('action') === 'submit') {
-                $signatureData = $this->processSignature($request->input('tanda_tangan_asesi'));
-            }
-
-            // Create APL record
+            // Create APL record first
             $apl = Apl01Pendaftaran::create([
                 'user_id' => Auth::id(),
                 'certification_scheme_id' => $schemeId,
@@ -269,8 +284,6 @@ class Apl01Controller extends Controller
                 'aplikasi_yang_digunakan' => $validated['aplikasi_yang_digunakan'] ?? [],
                 'pernyataan_benar' => $validated['pernyataan_benar'] ?? false,
                 'nama_lengkap_ktp' => $validated['nama_lengkap_ktp'] ?? $validated['nama_lengkap'],
-                'tanda_tangan_asesi' => $signatureData,
-                'tanggal_tanda_tangan_asesi' => $signatureData ? now() : null,
                 'status' => $request->input('action') === 'submit' ? 'submitted' : 'draft',
                 'submitted_at' => $request->input('action') === 'submit' ? now() : null,
             ]);
@@ -278,15 +291,22 @@ class Apl01Controller extends Controller
             // Handle dynamic requirement responses
             $this->handleRequirementResponses($request, $apl, $scheme);
 
+            // Process signature if provided dan submit
+            if ($request->filled('tanda_tangan_asesi') && $request->input('action') === 'submit') {
+                $signatureData = $this->processSignature($request->input('tanda_tangan_asesi'));
+                if ($signatureData) {
+                    // Gunakan method baru dari model untuk simpan signature
+                    $apl->signByAsesi($signatureData);
+                }
+            }
+
             DB::commit();
 
             $message = $request->input('action') === 'submit' ? 'APL 01 berhasil disubmit!' : 'Draft APL 01 berhasil disimpan!';
-
-            return redirect()->route('asesi.apl01.show', $apl->id)->with('success', $message);
+            return redirect()->route('asesi.inbox.index', $apl->id)->with('success', $message);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error saving APL 01: ' . $e->getMessage());
-
             return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
         }
     }
@@ -298,23 +318,29 @@ class Apl01Controller extends Controller
         if (!$apl->isEditable) {
             return redirect()->route('asesi.apl01.show', $id)->with('error', 'APL 01 tidak dapat diedit.');
         }
-        
+
         $scheme = $apl->certificationScheme()->with('requirementTemplates.activeItems')->first();
-        
+
         // Build validation rules dynamically
         $rules = $this->getValidationRules($scheme, $request);
-        
         $validated = $request->validate($rules);
-        
+
         try {
             DB::beginTransaction();
 
-            // Process signature if provided
-            $signatureData = $apl->tanda_tangan_asesi; 
-            if ($request->filled('tanda_tangan_asesi')) {
-                $newSignatureData = $this->processSignature($request->input('tanda_tangan_asesi'));
-                if ($newSignatureData) {
-                    $signatureData = $newSignatureData;
+            // Cek apakah template berubah → hapus requirement lama yang tidak relevan
+            if (!empty($validated['selected_requirement_template'])) {
+                $selectedTemplateId = $validated['selected_requirement_template'];
+                $selectedTemplate = $scheme->requirementTemplates->find($selectedTemplateId);
+
+                if ($selectedTemplate) {
+                    $validItemIds = $selectedTemplate->activeItems->pluck('id')->toArray();
+
+                    // Hapus requirement lama yang tidak ada di template baru
+                    $responses = $apl->requirement_answers ?? [];
+                    $filtered = collect($responses)->only($validItemIds)->toArray();
+                    $apl->requirement_answers = $filtered;
+                    $apl->save();
                 }
             }
 
@@ -355,24 +381,29 @@ class Apl01Controller extends Controller
                 'aplikasi_yang_digunakan' => $validated['aplikasi_yang_digunakan'] ?? [],
                 'pernyataan_benar' => $validated['pernyataan_benar'] ?? false,
                 'nama_lengkap_ktp' => $validated['nama_lengkap_ktp'] ?? $validated['nama_lengkap'],
-                'tanda_tangan_asesi' => $signatureData,
-                'tanggal_tanda_tangan_asesi' => $signatureData && $signatureData !== $apl->tanda_tangan_asesi ? now() : $apl->tanggal_tanda_tangan_asesi,
                 'status' => $request->input('action') === 'submit' ? 'submitted' : 'draft',
                 'submitted_at' => $request->input('action') === 'submit' && !$apl->submitted_at ? now() : $apl->submitted_at,
             ]);
-            
+
             // Handle dynamic requirement responses
             $this->handleRequirementResponses($request, $apl, $scheme);
+
+            // Process signature if provided
+            if ($request->filled('tanda_tangan_asesi')) {
+                $signatureData = $this->processSignature($request->input('tanda_tangan_asesi'));
+                if ($signatureData) {
+                    // Gunakan method baru dari model untuk simpan signature
+                    $apl->signByAsesi($signatureData);
+                }
+            }
 
             DB::commit();
 
             $message = $request->input('action') === 'submit' ? 'APL 01 berhasil disubmit!' : 'Draft APL 01 berhasil diupdate!';
-
-            return redirect()->route('asesi.apl01.show', $apl->id)->with('success', $message);
+            return redirect()->route('asesi.inbox.index', $apl->id)->with('success', $message);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating APL 01: ' . $e->getMessage());
-
             return back()->withInput()->with('error', $e->getMessage());
         }
     }
@@ -424,106 +455,75 @@ class Apl01Controller extends Controller
             }
         }
 
-        // Add dynamic requirement template validation
+        // Dynamic requirement validation
         if ($scheme && $scheme->requirementTemplates && $scheme->requirementTemplates->count() > 0) {
             $rules['selected_requirement_template'] = 'required|exists:requirement_templates,id';
 
-            // Only validate items for the selected template
             $selectedTemplateId = $request ? $request->input('selected_requirement_template') : null;
-            
             if ($selectedTemplateId) {
                 $selectedTemplate = $scheme->requirementTemplates->find($selectedTemplateId);
-                
                 if ($selectedTemplate && $selectedTemplate->activeItems) {
-                    
-                    // Cek jika ini adalah update request
-                    $isUpdateRequest = false;
                     $existingApl = null;
-                    
-                    if ($request && method_exists($request, 'route')) {
-                        $routeName = $request->route()->getName();
-                        if ($routeName === 'asesi.apl01.update') {
-                            $isUpdateRequest = true;
-                            $aplId = $request->route('apl01');
-                            $existingApl = Apl01Pendaftaran::find($aplId);
-                        }
+                    if ($request && method_exists($request, 'route') && $request->route()->getName() === 'asesi.apl01.update') {
+                        $aplId = $request->route('apl01');
+                        $existingApl = Apl01Pendaftaran::find($aplId);
                     }
-                    
+
                     foreach ($selectedTemplate->activeItems as $item) {
                         $fieldName = "requirement_item_{$item->id}";
-                        
+
                         switch ($item->type) {
                             case 'file_upload':
                                 $maxSizeKB = ($item->max_file_size ?? 5) * 1024;
                                 $allowedExtensions = str_replace('.', '', $item->allowed_extensions ?? 'pdf,doc,docx,jpg,jpeg,png');
-                                
-                                // Logic untuk file upload
-                                if ($item->is_required) {
-                                    $hasExistingFile = false;
-                                    
-                                    // Cek jika ada file existing (untuk update)
-                                    if ($isUpdateRequest && $existingApl) {
-                                        $hasExistingFile = $existingApl->hasRequirementFile($item->id);
-                                    }
-                                    
-                                    // Cek juga dari request existing marker
-                                    $hasExistingMarker = $request && $request->has($fieldName . '_existing');
-                                    
-                                    // Jika ada file existing atau marker existing, file upload TIDAK wajib
-                                    if ($hasExistingFile || $hasExistingMarker) {
-                                        $rules[$fieldName] = "nullable|file|max:{$maxSizeKB}|mimes:{$allowedExtensions}";
-                                    } else {
-                                        // Tidak ada file existing, file upload WAJIB
-                                        $rules[$fieldName] = "required|file|max:{$maxSizeKB}|mimes:{$allowedExtensions}";
-                                    }
+
+                                $hasExistingFile = $existingApl ? $existingApl->hasRequirementFile($item->id) : false;
+                                $hasExistingMarker = $request && $request->has($fieldName . '_existing');
+
+                                if ($item->is_required && !$hasExistingFile && !$hasExistingMarker) {
+                                    $rules[$fieldName] = "required|file|max:{$maxSizeKB}|mimes:{$allowedExtensions}";
                                 } else {
-                                    // File tidak wajib
                                     $rules[$fieldName] = "nullable|file|max:{$maxSizeKB}|mimes:{$allowedExtensions}";
                                 }
                                 break;
-                                
+
                             case 'email':
                                 $rules[$fieldName] = $item->is_required ? 'required|email|max:255' : 'nullable|email|max:255';
                                 break;
-                                
+
                             case 'url':
                                 $rules[$fieldName] = $item->is_required ? 'required|url|max:255' : 'nullable|url|max:255';
                                 break;
-                                
+
                             case 'date':
                                 $rules[$fieldName] = $item->is_required ? 'required|date' : 'nullable|date';
                                 break;
-                                
+
                             case 'select':
                             case 'radio':
-                                if ($item->options) {
-                                    $options = is_string($item->options) ? json_decode($item->options, true) : $item->options;
-                                    if (is_array($options) && !empty($options)) {
-                                        $optionValues = implode(',', $options);
-                                        $rules[$fieldName] = $item->is_required ? "required|in:{$optionValues}" : "nullable|in:{$optionValues}";
-                                    }
+                                $options = is_string($item->options) ? json_decode($item->options, true) : $item->options;
+                                if (is_array($options) && !empty($options)) {
+                                    $optionValues = implode(',', $options);
+                                    $rules[$fieldName] = $item->is_required ? "required|in:{$optionValues}" : "nullable|in:{$optionValues}";
                                 }
                                 break;
-                                
+
                             case 'checkbox':
-                                if ($item->options) {
-                                    $options = is_string($item->options) ? json_decode($item->options, true) : $item->options;
-                                    if (is_array($options) && !empty($options)) {
-                                        $rules[$fieldName] = 'nullable|array';
-                                        $rules[$fieldName . '.*'] = 'in:' . implode(',', $options);
-                                    } else {
-                                        $rules[$fieldName] = 'nullable|boolean';
-                                    }
+                                $options = is_string($item->options) ? json_decode($item->options, true) : $item->options;
+                                if (is_array($options) && !empty($options)) {
+                                    $rules[$fieldName] = 'nullable|array';
+                                    $rules[$fieldName . '.*'] = 'in:' . implode(',', $options);
                                 } else {
                                     $rules[$fieldName] = 'nullable|boolean';
                                 }
                                 break;
-                                
+
                             case 'textarea':
                                 $rules[$fieldName] = $item->is_required ? 'required|string|max:2000' : 'nullable|string|max:2000';
                                 break;
-                                
-                            default: // text_input
+
+                            default:
+                                // text_input
                                 $rules[$fieldName] = $item->is_required ? 'required|string|max:1000' : 'nullable|string|max:1000';
                         }
                     }
@@ -532,7 +532,7 @@ class Apl01Controller extends Controller
         }
 
         return $rules;
-    } 
+    }
 
     protected function processSignature($signatureData)
     {
@@ -548,29 +548,13 @@ class Apl01Controller extends Controller
 
             $imageType = $matches[1];
             $allowedTypes = ['png', 'jpeg', 'jpg'];
-            
+
             if (!in_array(strtolower($imageType), $allowedTypes)) {
                 throw new \Exception('Invalid image type for signature');
             }
 
-            // Extract and decode base64 data
-            $base64Data = substr($signatureData, strpos($signatureData, ',') + 1);
-            $decodedData = base64_decode($base64Data);
-
-            if (!$decodedData) {
-                throw new \Exception('Failed to decode signature data');
-            }
-
-            // Validate image
-            $image = imagecreatefromstring($decodedData);
-            if (!$image) {
-                throw new \Exception('Invalid image data');
-            }
-            imagedestroy($image);
-
-            // Return the validated signature data
+            // Return validated signature data - actual storage will be handled by model
             return $signatureData;
-
         } catch (\Exception $e) {
             Log::error('Error processing signature: ' . $e->getMessage());
             return null;
@@ -579,78 +563,62 @@ class Apl01Controller extends Controller
 
     protected function handleRequirementResponses($request, $apl, $scheme)
     {
+        // Pastikan requirement_answers selalu berupa array
         $responses = $apl->requirement_answers ?? [];
+        if (!is_array($responses)) {
+            $responses = json_decode($responses, true) ?: [];
+        }
 
         $selectedTemplateId = $request->input('selected_requirement_template');
 
         if ($selectedTemplateId && $scheme->requirementTemplates) {
-            $selectedTemplate = $scheme->requirementTemplates->find($selectedTemplateId);
+            $selectedTemplate = $scheme->requirementTemplates->where('id', $selectedTemplateId)->first();
 
             if ($selectedTemplate && $selectedTemplate->activeItems) {
                 foreach ($selectedTemplate->activeItems as $item) {
                     $fieldName = "requirement_item_{$item->id}";
                     $existingMarker = $fieldName . '_existing';
 
-                    // Handle file uploads
                     if ($request->hasFile($fieldName)) {
                         try {
-                            // Delete old file if exists
-                            if (isset($responses[$item->id]) && is_string($responses[$item->id])) {
-                                $oldPath = $responses[$item->id];
-                                if ($oldPath && Storage::disk('public')->exists($oldPath)) {
-                                    Storage::disk('public')->delete($oldPath);
-                                }
-                            }
-
                             $file = $request->file($fieldName);
-
-                            // Validate file size
                             $maxSizeBytes = ($item->max_file_size ?? 5) * 1024 * 1024;
+
                             if ($file->getSize() > $maxSizeBytes) {
-                                throw new \Exception("File terlalu besar. Maksimal " . ($item->max_file_size ?? 5) . "MB");
+                                throw new \Exception('File terlalu besar. Maksimal ' . ($item->max_file_size ?? 5) . 'MB');
                             }
 
-                            // Store new file
-                            $path = $file->store('apl01/requirements', 'public');
-                            $responses[$item->id] = $path;
+                            // Store file dan update requirement_answers
+                            $filePath = $apl->storeRequirementFile($file, $item->id);
 
+                            // Tidak perlu reload atau save lagi karena sudah dilakukan di storeRequirementFile
                         } catch (\Exception $e) {
                             Log::error("Error uploading file for item {$item->id}: " . $e->getMessage());
                             throw new \Exception("Gagal mengupload file untuk {$item->document_name}: " . $e->getMessage());
                         }
-                    } 
-                    // Cek existing marker untuk mempertahankan file lama
-                    elseif ($request->has($existingMarker)) {
-                        // File existing ada, pertahankan data lama
-                        // Tidak perlu ubah $responses[$item->id] karena sudah ada dari database
-                    }
-                    // Handle other input types
-                    elseif ($request->has($fieldName)) {
+                    } elseif ($request->has($existingMarker)) {
+                        // Pertahankan file lama (tidak diubah)
+                    } elseif ($request->has($fieldName)) {
                         $value = $request->input($fieldName);
 
                         if ($item->type === 'checkbox' && is_array($value)) {
-                            $responses[$item->id] = implode(',', $value);
-                        } elseif (!is_null($value) && $value !== '') {
-                            $responses[$item->id] = $value;
+                            $apl->setRequirementItemAnswer($item->id, implode(',', $value));
+                        } elseif ($value !== null && $value !== '') {
+                            $apl->setRequirementItemAnswer($item->id, $value);
                         }
+                        $apl->save();
                     }
                 }
             }
         }
-
-        $apl->update(['requirement_answers' => $responses]);
     }
 
     protected function generateAplNumber()
     {
         $year = date('Y');
         $month = date('m');
-        
-        $lastApl = Apl01Pendaftaran::whereNotNull('nomor_apl_01')
-            ->whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->orderBy('nomor_apl_01', 'desc')
-            ->first();
+
+        $lastApl = Apl01Pendaftaran::whereNotNull('nomor_apl_01')->whereYear('created_at', $year)->whereMonth('created_at', $month)->orderBy('nomor_apl_01', 'desc')->first();
 
         if ($lastApl && preg_match('/(\d{4})$/', $lastApl->nomor_apl_01, $matches)) {
             $nextNumber = intval($matches[1]) + 1;

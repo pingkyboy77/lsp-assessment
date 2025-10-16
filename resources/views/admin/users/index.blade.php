@@ -19,7 +19,7 @@
                     <p class="mb-0 text-muted">Manage and organize User</p>
                 </div>
                 <div>
-                    <a href="{{ route('admin.users.create') }}" class="btn btn-primary-custom btn-sm text-light">
+                    <a href="{{ route('admin.users.create') }}" class=" btn-primary-custom btn-sm text-light">
                         <i class="bi bi-plus-circle me-2 text-light"></i>Add New User
                     </a>
                 </div>
@@ -48,7 +48,7 @@
                                     <i class="bi bi-person-gear me-2"></i>Roles
                                 </th>
                                 <th>
-                                    <i class="bi bi-building me-2"></i>Company
+                                    <i class="bi bi-building me-2"></i>Lembaga Pelatihan
                                 </th>
                                 <th>
                                     <i class="bi bi-card-text me-2"></i>Id Number

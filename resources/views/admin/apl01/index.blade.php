@@ -17,19 +17,17 @@
         </div>
     @endif
     <div class="main-card">
-        <!-- Header Section -->
-        <div class="card-header-custom d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="mb-1">Monitoring APL 01</h2>
-                <p class="text-muted mb-0">Kelola permohonan sertifikasi profesi</p>
-            </div>
-            <div class="d-flex gap-2">
-                {{-- <button class="btn btn-outline-secondary" onclick="exportData()">
-                    <i class="bi bi-download"></i> Export
-                </button> --}}
-                <button class="btn btn-outline-info" onclick="refreshStats()">
-                    <i class="bi bi-arrow-clockwise"></i> Refresh
-                </button>
+        <div class="card-header-custom">
+
+
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1 text-dark fw-bold">
+                        <i class="bi bi-clipboard-check me-2"></i>Monitoring APL 01
+                    </h5>
+                    <p class="mb-0 text-muted">Monitoring pengguna yang telah mengisi data APL 01</p>
+                </div>
+
             </div>
         </div>
 
@@ -86,7 +84,7 @@
 
 
         <!-- Bulk Actions -->
-        <div class="card mb-4" id="bulkActionsCard" style="display: none;">
+        <div class="card mb-4 m-3" id="bulkActionsCard" style="display: none;">
             <div class="card-body bg-light">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -138,7 +136,7 @@
                                         <option value="submitted">Submitted</option>
                                         <option value="approved">Approved</option>
                                         <option value="rejected">Rejected</option>
-                                        <option value="returned">Returned</option>
+                                        <option value="open">Re Open</option>
                                     </select>
                                 </div>
                                 <div class="col-md-5">
@@ -166,27 +164,23 @@
                         </div>
                     </div>
                 </div>
-                <div class="table-responsive">
-                    <table id="aplTable" class="table table-hover mb-0" style="width: 100%">
-                        <thead class="bg-light">
-                            <tr>
-                                <th width="40">
-                                    <input type="checkbox" class="form-check-input" id="selectAll">
-                                </th>
-                                <th>No. APL / Peserta</th>
-                                <th>Skema Sertifikasi</th>
-                                <th>Lembaga Pelatihan</th>
-                                <th>Submitted</th>
-                                <th>Status</th>
-                                <th>Reviewer</th>
-                                <th width="160">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Data will be loaded via AJAX -->
-                        </tbody>
-                    </table>
-                </div>
+                {{-- <div class="table-responsive"> --}}
+                <table id="aplTable" class="table table-hover mb-0 nowrap" style="width:100%">
+                    <thead class="bg-light">
+                        <tr>
+                            <th width="40"><input type="checkbox" class="form-check-input" id="selectAll"></th>
+                            <th>No. APL / Peserta</th>
+                            <th style="width: 10%">Skema Sertifikasi</th>
+                            <th>Lembaga Pelatihan</th>
+                            <th>Submitted</th>
+                            <th>Status</th>
+                            <th>Reviewer</th>
+                            <th width="160">Aksi</th>
+                        </tr>
+                    </thead>
+                </table>
+
+                {{-- </div> --}}
             </div>
         </div>
     </div>
@@ -218,9 +212,9 @@
                         <button type="button" class="btn btn-danger" onclick="processReview('reject')">
                             <i class="bi bi-x-circle"></i> Reject
                         </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="processReview('return')">
+                        {{-- <button type="button" class="btn btn-outline-secondary" onclick="processReview('return')">
                             <i class="bi bi-arrow-return-left"></i> Return
-                        </button>
+                        </button> --}}
                     </div>
                 </div>
             </div>
@@ -316,6 +310,7 @@
             dataTable = $('#aplTable').DataTable({
                 processing: true,
                 serverSide: true,
+                scrollX: true, // aktifkan scroll horizontal
                 ajax: {
                     url: '{{ route('admin.apl01.data') }}',
                     type: 'POST',
@@ -332,148 +327,144 @@
                 },
                 columns: [{
                         data: 'id',
-                        name: 'id',
                         orderable: false,
                         searchable: false,
-                        render: function(data, type, row) {
+                        render: function(data) {
                             return `<input type="checkbox" class="form-check-input row-select" value="${data}">`;
                         }
                     },
                     {
                         data: null,
-                        name: 'participant_info',
                         orderable: false,
-                        render: function(data, type, row) {
+                        render: function(row) {
                             return `
-                        <div class="d-flex flex-column">
-                            <span class="fw-bold">${row.nomor_apl_01 || 'DRAFT'}</span>
-                            <small class="text-muted">${row.nama_lengkap}</small>
-                            <small class="text-muted">${row.email}</small>
-                        </div>
-                    `;
+                    <div class="d-flex flex-column">
+                        <span class="fw-bold">${row.nomor_apl_01 || 'DRAFT'}</span>
+                        <small class="text-muted">${row.nama_lengkap}</small>
+                        <small class="text-muted">${row.email}</small>
+                    </div>`;
                         }
                     },
                     {
                         data: null,
-                        name: 'scheme_info',
-                        render: function(data, type, row) {
-                            return `
-                        <div class="d-flex flex-column">
-                            <span class="fw-semibold">${row.certification_scheme_nama || '-'}</span>
-                            <small class="text-muted">${row.certification_scheme_jenjang || ''}</small>
-                            <small class="text-muted">${row.units_count || 0} Unit Kompetensi</small>
-                        </div>
-                    `;
+                        render: function(row) {
+                            return `    
+            <div class="d-flex flex-column">
+                <span class="fw-semibold">${row.code_1 || '-'}</span>
+                <small class="text-muted text-wrap text-break" style="max-width: 200px; white-space: normal;">
+                    ${row.certification_scheme_nama || ''}
+                </small>
+            </div>
+        `;
                         }
                     },
                     {
                         data: 'lembaga_pelatihan_nama',
-                        name: 'lembaga_pelatihan.name',
-                        render: function(data, type, row) {
-                            return data ? `<span class="text-primary">${data}</span>` :
+                        render: function(data) {
+                            return data ?
+                                `<span class="text-primary">${data}</span>` :
                                 '<span class="text-muted">Individu</span>';
                         }
                     },
                     {
                         data: 'submitted_at',
-                        name: 'submitted_at',
-                        render: function(data, type, row) {
-                            if (data) {
-                                const date = new Date(data);
-                                return `
-                            <small class="text-muted">
-                                ${date.toLocaleDateString('id-ID')}<br>
-                                ${date.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})}
-                            </small>
-                        `;
-                            }
-                            return '<span class="text-muted">-</span>';
+                        render: function(data) {
+                            if (!data) return '<span class="text-muted">-</span>';
+                            const date = new Date(data);
+                            return `
+                    <small class="text-muted">
+                        ${date.toLocaleDateString('id-ID')}<br>
+                        ${date.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}
+                    </small>`;
                         }
                     },
                     {
                         data: 'status',
-                        name: 'status',
-                        render: function(data, type, row) {
+                        render: function(data) {
                             const colorMap = {
                                 'draft': 'text-secondary',
                                 'submitted': 'text-info',
                                 'approved': 'text-success',
                                 'rejected': 'text-danger',
-                                'returned': 'text-warning'
+                                'open': 'text-warning'
                             };
                             const textMap = {
                                 'draft': 'Draft',
                                 'submitted': 'Submitted',
                                 'approved': 'Approved',
                                 'rejected': 'Rejected',
-                                'returned': 'Returned'
+                                'open': 'Re open'
                             };
-                            return `<span class="fw-semibold ${colorMap[data] || 'text-secondary'}">${textMap[data] || data}</span>`;
+                            return `<span class="fw-semibold ${colorMap[data] || 'text-secondary'}">
+                            ${textMap[data] || data}
+                        </span>`;
                         }
                     },
                     {
                         data: null,
-                        name: 'reviewer_info',
                         orderable: false,
-                        render: function(data, type, row) {
+                        render: function(row) {
                             if (row.reviewer_name && row.reviewed_at) {
-                                const reviewDate = new Date(row.reviewed_at);
+                                const rDate = new Date(row.reviewed_at);
                                 return `
-                            <small class="text-muted">
-                                ${row.reviewer_name}<br>
-                                ${reviewDate.toLocaleDateString('id-ID')} ${reviewDate.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})}
-                            </small>
-                        `;
+                        <small class="text-muted">
+                            ${row.reviewer_name}<br>
+                            ${rDate.toLocaleDateString('id-ID')} 
+                            ${rDate.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}
+                        </small>`;
                             }
                             return '<span class="text-muted">-</span>';
                         }
                     },
                     {
                         data: null,
-                        name: 'actions',
                         orderable: false,
                         searchable: false,
-                        render: function(data, type, row) {
+                        render: function(row) {
                             let actions = `
-                        <div class="d-flex gap-1">
-                            <a href="/admin/apl01/${row.id}" class="btn btn-sm btn-outline-primary" title="Lihat Detail">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="/admin/apl01/${row.id}/edit" class="btn btn-sm btn-outline-secondary" title="Edit">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                    `;
+            <div class="d-flex gap-1">
+                <a href="/admin/apl01/${row.id}" class="btn btn-sm btn-outline-primary" title="Lihat Detail">
+                    <i class="bi bi-eye"></i>
+                </a>`;
 
+                            // Edit hanya untuk draft & submitted
+                            if (['draft', 'submitted'].includes(row.status)) {
+                                actions += `
+                <a href="/admin/apl01/${row.id}/edit" class="btn btn-sm btn-outline-secondary" title="Edit">
+                    <i class="bi bi-pencil"></i>
+                </a>`;
+                            }
+
+                            // Review hanya untuk submitted, review, reviewed
                             if (['submitted', 'review', 'reviewed'].includes(row.status)) {
                                 actions += `
-                            <button class="btn btn-sm btn-outline-info" onclick="openReviewModal(${row.id})" title="Review">
-                                <i class="bi bi-clipboard-check"></i>
-                            </button>
-                        `;
+                <button class="btn btn-sm btn-outline-info" onclick="openReviewModal(${row.id})" title="Review">
+                    <i class="bi bi-clipboard-check"></i>
+                </button>`;
                             }
-                            if (['submitted', 'approved'].includes(row
-                                    .status)) {
+
+                            // Reopen hanya untuk submitted
+                            if (row.status === 'submitted') {
                                 actions += `
-                    <button class="btn btn-sm btn-outline-warning" onclick="reopenApl(${row.id})">
-                        <i class="bi bi-unlock"></i>
-                    </button>
-                        `;
+                <button class="btn btn-sm btn-outline-warning" onclick="reopenApl(${row.id})" title="Re Open">
+                    <i class="bi bi-unlock"></i>
+                </button>`;
                             }
 
                             actions += '</div>';
                             return actions;
                         }
-                    }
+                    },
+
                 ],
                 order: [
                     [4, 'desc']
-                ], // Order by submitted_at desc
+                ],
                 pageLength: 25,
                 lengthMenu: [
                     [10, 25, 50, 100],
                     [10, 25, 50, 100]
                 ],
-                responsive: true,
                 language: {
                     processing: "Memuat data...",
                     search: "Pencarian:",
@@ -490,11 +481,12 @@
                     emptyTable: "Tidak ada data yang tersedia",
                     zeroRecords: "Tidak ada data yang cocok dengan pencarian"
                 },
-                drawCallback: function(settings) {
+                drawCallback: function() {
                     bindRowSelectHandlers();
                 }
             });
         }
+
 
 
         function reopenApl(aplId) {
@@ -678,8 +670,8 @@
                             <div class="ms-2">
                                 ${doc.file_exists ? 
                                     `<a href="${doc.file_url}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-eye"></i> Lihat
-                                                </a>` : 
+                                                                            <i class="bi bi-eye"></i> Lihat
+                                                                        </a>` : 
                                     '<span class="badge bg-danger">File Tidak Ada</span>'
                                 }
                             </div>

@@ -21,7 +21,7 @@
                 <div class="header-content">
                     <div class="scheme-info">
                         <div class="scheme-name">{{ $scheme->nama }}</div>
-                        <div class="scheme-code">({{ $scheme->code_1 }})</div>
+                        {{-- <div class="scheme-code">({{ $scheme->code_1 }})</div> --}}
                     </div>
 
                     <div class="form-title d-flex align-items-baseline gap-2 justify-content-center">
@@ -34,16 +34,19 @@
                     </div>
                 </div>
             </div>
-@php
-    $isEdit = isset($existingApl) && $existingApl && $existingApl->exists;
-    $formAction = $isEdit ? route('asesi.apl01.update', $existingApl->id) : route('asesi.apl01.store', $scheme->id);
-@endphp
+            @php
+                $isEdit = isset($existingApl) && $existingApl && $existingApl->exists;
+                $formAction = $isEdit
+                    ? route('asesi.apl01.update', $existingApl->id)
+                    : route('asesi.apl01.store', $scheme->id);
+            @endphp
             <!-- Main Form -->
-            <form action="{{ $formAction }}" method="POST" id="apl01Form" enctype="multipart/form-data" class="main-form">
-    @csrf
-    @if($isEdit)
-        @method('PUT')
-    @endif
+            <form action="{{ $formAction }}" method="POST" id="apl01Form" enctype="multipart/form-data"
+                class="main-form">
+                @csrf
+                @if ($isEdit)
+                    @method('PUT')
+                @endif
 
                 <!-- Hidden field for signature -->
                 <input type="hidden" name="tanda_tangan_asesi" id="signature-input"
@@ -84,8 +87,8 @@
                     <div class="form-group">
                         <label class="form-label required">Tempat Lahir</label>
                         <input type="text" class="form-input @error('tempat_lahir') error @enderror" name="tempat_lahir"
-                            value="{{ old('tempat_lahir', optional($existingApl)->tempat_lahir) }}" placeholder="Kota tempat lahir"
-                            required>
+                            value="{{ old('tempat_lahir', optional($existingApl)->tempat_lahir) }}"
+                            placeholder="Kota tempat lahir" required>
                         @error('tempat_lahir')
                             <div class="error-message">{{ $message }}</div>
                         @enderror
@@ -95,7 +98,8 @@
                         <label class="form-label required">Tanggal Lahir</label>
                         <input type="date" class="form-input @error('tanggal_lahir') error @enderror"
                             name="tanggal_lahir"
-                            value="{{ old('tanggal_lahir', optional($existingApl)->tanggal_lahir?->format('Y-m-d')) }}" required>
+                            value="{{ old('tanggal_lahir', optional($existingApl)->tanggal_lahir?->format('Y-m-d')) }}"
+                            required>
                         @error('tanggal_lahir')
                             <div class="error-message">{{ $message }}</div>
                         @enderror
@@ -155,8 +159,8 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label required">Kota/Kabupaten</label>
-                        <select class="form-select @error('kota_rumah') error @enderror" id="kota_rumah"
-                            name="kota_rumah" required>
+                        <select class="form-select @error('kota_rumah') error @enderror" id="kota_rumah" name="kota_rumah"
+                            required>
                             <option value="">Pilih Kota/Kabupaten</option>
                             @foreach ($cities as $city)
                                 <option value="{{ $city->id }}" data-province-id="{{ $city->province->id }}"
@@ -188,7 +192,8 @@
                     <div class="form-group">
                         <label class="form-label">Kode Pos</label>
                         <input type="text" class="form-input @error('kode_pos') error @enderror" name="kode_pos"
-                            maxlength="10" placeholder="12345" value="{{ old('kode_pos', optional($existingApl)->kode_pos) }}">
+                            maxlength="10" placeholder="12345"
+                            value="{{ old('kode_pos', optional($existingApl)->kode_pos) }}">
                         @error('kode_pos')
                             <div class="error-message">{{ $message }}</div>
                         @enderror
@@ -217,8 +222,8 @@
                     <div class="form-group">
                         <label class="form-label required">No. HP</label>
                         <input type="text" class="form-input @error('no_hp') error @enderror" name="no_hp"
-                            maxlength="15" placeholder="08123456789" value="{{ old('no_hp', optional($existingApl)->no_hp) }}"
-                            required>
+                            maxlength="15" placeholder="08123456789"
+                            value="{{ old('no_hp', optional($existingApl)->no_hp) }}" required>
                         @error('no_hp')
                             <div class="error-message">{{ $message }}</div>
                         @enderror
@@ -227,7 +232,8 @@
                     <div class="form-group">
                         <label class="form-label required">Email</label>
                         <input type="email" class="form-input @error('email') error @enderror" name="email"
-                            placeholder="nama@email.com" value="{{ old('email', optional($existingApl)->email) }}" required>
+                            placeholder="nama@email.com" value="{{ old('email', optional($existingApl)->email) }}"
+                            required>
                         @error('email')
                             <div class="error-message">{{ $message }}</div>
                         @enderror
@@ -264,7 +270,8 @@
                         <label class="form-label required">Nama Sekolah/Universitas Terakhir</label>
                         <input type="text" class="form-input @error('nama_sekolah_terakhir') error @enderror"
                             name="nama_sekolah_terakhir" placeholder="Nama institusi pendidikan"
-                            value="{{ old('nama_sekolah_terakhir', optional($existingApl)->nama_sekolah_terakhir) }}" required>
+                            value="{{ old('nama_sekolah_terakhir', optional($existingApl)->nama_sekolah_terakhir) }}"
+                            required>
                         @error('nama_sekolah_terakhir')
                             <div class="error-message">{{ $message }}</div>
                         @enderror
@@ -303,7 +310,8 @@
                             <label class="form-label required">Nama Tempat Kerja</label>
                             <input type="text" class="form-input @error('nama_tempat_kerja') error @enderror"
                                 name="nama_tempat_kerja" placeholder="PT. Nama Perusahaan"
-                                value="{{ old('nama_tempat_kerja', optional($existingApl)->nama_tempat_kerja) }}" required>
+                                value="{{ old('nama_tempat_kerja', optional($existingApl)->nama_tempat_kerja) }}"
+                                required>
                             @error('nama_tempat_kerja')
                                 <div class="error-message">{{ $message }}</div>
                             @enderror
@@ -312,8 +320,8 @@
                         <div class="form-group">
                             <label class="form-label required">Jabatan</label>
                             <input type="text" class="form-input @error('jabatan') error @enderror" name="jabatan"
-                                placeholder="Posisi/jabatan saat ini" value="{{ old('jabatan', optional($existingApl)->jabatan) }}"
-                                required>
+                                placeholder="Posisi/jabatan saat ini"
+                                value="{{ old('jabatan', optional($existingApl)->jabatan) }}" required>
                             @error('jabatan')
                                 <div class="error-message">{{ $message }}</div>
                             @enderror
@@ -444,9 +452,9 @@
                         <label class="form-label">TUK (Tempat Uji Kompetensi)</label>
                         <select class="form-select @error('tuk') error @enderror" name="tuk">
                             <option value="">Pilih TUK</option>
-                            @foreach (['Sewaktu', 'Tempat Kerja', 'Mandiri'] as $tuk)
+                            @foreach (['Sewaktu', 'Mandiri'] as $tuk)
                                 <option value="{{ $tuk }}"
-                                    {{ old('tuk', optional($existingApl)->tuk) == $tuk ? 'selected' : '' }}>
+                                    {{ old('tuk', optional($existingApl)->tuk ?? 'Sewaktu') == $tuk ? 'selected' : '' }}>
                                     {{ $tuk }}
                                 </option>
                             @endforeach
@@ -461,14 +469,14 @@
                         <div class="radio-group">
                             <label class="radio-option">
                                 <input type="radio" name="kategori_peserta" value="individu"
-                                    {{ old('kategori_peserta', optional($existingApl)->kategori_peserta) == 'individu' ? 'checked' : '' }}
+                                    {{ old('kategori_peserta', optional($existingApl)->kategori_peserta ?? 'training_provider') == 'individu' ? 'checked' : '' }}
                                     required>
                                 <span class="radio-custom"></span>
                                 <span class="radio-label">Individu / Mandiri</span>
                             </label>
                             <label class="radio-option">
                                 <input type="radio" name="kategori_peserta" value="training_provider"
-                                    {{ old('kategori_peserta', optional($existingApl)->kategori_peserta) == 'training_provider' ? 'checked' : '' }}
+                                    {{ old('kategori_peserta', optional($existingApl)->kategori_peserta ?? 'training_provider') == 'training_provider' ? 'checked' : '' }}
                                     required>
                                 <span class="radio-custom"></span>
                                 <span class="radio-label">Training Provider</span>
@@ -478,6 +486,7 @@
                             <div class="error-message">{{ $message }}</div>
                         @enderror
                     </div>
+
                 </div>
 
                 <div id="training_provider_section" class="conditional-section"
@@ -523,7 +532,9 @@
                                         'tujuan_asesmen_radio',
                                         in_array(optional($existingApl)->tujuan_asesmen, ['Sertifikasi', 'Sertifikasi Ulang', 'PKT', 'RPL'])
                                             ? optional($existingApl)->tujuan_asesmen
-                                            : ($isEdit ? 'Lainnya' : 'Sertifikasi'),
+                                            : ($isEdit
+                                                ? 'Lainnya'
+                                                : 'Sertifikasi'),
                                     ) == $value
                                         ? 'checked'
                                         : '' }}
@@ -545,7 +556,9 @@
                         'tujuan_asesmen_radio',
                         in_array(optional($existingApl)->tujuan_asesmen, ['Sertifikasi', 'Sertifikasi Ulang', 'PKT', 'RPL'])
                             ? optional($existingApl)->tujuan_asesmen
-                            : ($isEdit ? 'Lainnya' : 'Sertifikasi'),
+                            : ($isEdit
+                                ? 'Lainnya'
+                                : 'Sertifikasi'),
                     ) == 'Lainnya'
                         ? 'block'
                         : 'none' }};">
@@ -638,14 +651,16 @@
                                             @php
                                                 $fieldName = "requirement_item_{$item->id}";
                                                 $existingValue = old($fieldName);
-                                                
+
                                                 if (!$existingValue && $existingApl) {
-                                                    $existingValue = $existingApl->getRequirementItemAnswer($item->id) ?? '';
+                                                    $existingValue =
+                                                        $existingApl->getRequirementItemAnswer($item->id) ?? '';
                                                 }
 
                                                 $isRequired = $item->is_required;
                                                 $maxFileSize = $item->max_file_size ?? 5;
-                                                $allowedExtensions = $item->allowed_extensions ?? '.pdf,.doc,.docx,.jpg,.jpeg,.png';
+                                                $allowedExtensions =
+                                                    $item->allowed_extensions ?? '.pdf,.doc,.docx,.jpg,.jpeg,.png';
                                             @endphp
 
                                             <div class="col-md-6">
@@ -669,108 +684,130 @@
 
                                                     @if ($item->type === 'file_upload')
                                                         @if ($existingApl && $existingApl->exists && $existingApl->hasRequirementFile($item->id))
-                                                            <div class="existing-file-display mb-3 p-3 bg-success bg-opacity-10 rounded border">
+                                                            <div
+                                                                class="existing-file-display mb-3 p-3 bg-success bg-opacity-10 rounded border">
                                                                 @php
-                                                                    $fileName = $existingApl->getRequirementFileName($item->id);
-                                                                    $fileUrl = $existingApl->getRequirementFileUrl($item->id);
-                                                                    $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
+                                                                    $fileName = $existingApl->getRequirementFileName(
+                                                                        $item->id,
+                                                                    );
+                                                                    $fileUrl = $existingApl->getRequirementFileUrl(
+                                                                        $item->id,
+                                                                    );
+                                                                    $fileExtension = pathinfo(
+                                                                        $fileName,
+                                                                        PATHINFO_EXTENSION,
+                                                                    );
                                                                 @endphp
 
                                                                 <div class="d-flex align-items-start">
                                                                     <div class="file-icon me-3">
                                                                         @if (in_array(strtolower($fileExtension), ['jpg', 'jpeg', 'png']))
-                                                                            <img src="{{ $fileUrl }}" alt="Preview" 
-                                                                                 class="img-thumbnail" style="max-width:80px; max-height:80px;">
+                                                                            <img src="{{ $fileUrl }}"
+                                                                                alt="Preview" class="img-thumbnail"
+                                                                                style="max-width:80px; max-height:80px;">
                                                                         @elseif (strtolower($fileExtension) === 'pdf')
-                                                                            <i class="bi bi-file-earmark-pdf text-danger fs-1"></i>
+                                                                            <i
+                                                                                class="bi bi-file-earmark-pdf text-danger fs-1"></i>
                                                                         @else
-                                                                            <i class="bi bi-file-earmark text-primary fs-1"></i>
+                                                                            <i
+                                                                                class="bi bi-file-earmark text-primary fs-1"></i>
                                                                         @endif
                                                                     </div>
                                                                     <div class="file-info flex-grow-1">
                                                                         <div class="d-flex align-items-center mb-2">
-                                                                            <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                                                            <strong class="text-success">File sudah diupload</strong>
+                                                                            <i
+                                                                                class="bi bi-check-circle-fill text-success me-1"></i>
+                                                                            <strong class="text-success">File sudah
+                                                                                diupload</strong>
                                                                         </div>
-                                                                        <small class="text-muted d-block">{{ $fileName }}</small>
+                                                                        <small
+                                                                            class="text-muted d-block">{{ $fileName }}</small>
                                                                         <div class="mt-2">
-                                                                            <a href="{{ $fileUrl }}" target="_blank"
-                                                                               class="btn btn-outline-primary btn-sm me-1">
+                                                                            <a href="{{ $fileUrl }}"
+                                                                                target="_blank"
+                                                                                class="btn btn-outline-primary btn-sm me-1">
                                                                                 <i class="bi bi-eye"></i> Lihat
                                                                             </a>
-                                                                            <a href="{{ $fileUrl }}" download="{{ $fileName }}"
-                                                                               class="btn btn-outline-success btn-sm me-1">
+                                                                            <a href="{{ $fileUrl }}"
+                                                                                download="{{ $fileName }}"
+                                                                                class="btn btn-outline-success btn-sm me-1">
                                                                                 <i class="bi bi-download"></i> Download
                                                                             </a>
                                                                             <button type="button"
-                                                                                    class="btn btn-outline-warning btn-sm"
-                                                                                    onclick="replaceExistingFile('{{ $item->id }}')">
-                                                                                <i class="bi bi-arrow-repeat"></i> Ganti File
+                                                                                class="btn btn-outline-warning btn-sm"
+                                                                                onclick="replaceExistingFile('{{ $item->id }}')">
+                                                                                <i class="bi bi-arrow-repeat"></i> Ganti
+                                                                                File
                                                                             </button>
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
 
-                                                            <input type="file" 
-                                                                   class="form-control @error($fieldName) is-invalid @enderror"
-                                                                   name="{{ $fieldName }}"
-                                                                   accept="{{ $allowedExtensions }}"
-                                                                   onchange="previewFile(this, '{{ $item->id }}')"
-                                                                   style="display: none;"
-                                                                   id="file_input_{{ $item->id }}">
+                                                            <input type="file"
+                                                                class="form-control @error($fieldName) is-invalid @enderror"
+                                                                name="{{ $fieldName }}"
+                                                                accept="{{ $allowedExtensions }}"
+                                                                onchange="previewFile(this, '{{ $item->id }}')"
+                                                                style="display: none;"
+                                                                id="file_input_{{ $item->id }}">
 
-                                                            <input type="hidden" name="{{ $fieldName }}_existing" value="1">
+                                                            <input type="hidden" name="{{ $fieldName }}_existing"
+                                                                value="1">
                                                         @else
                                                             <input type="file"
-                                                                   class="form-control @error($fieldName) is-invalid @enderror"
-                                                                   name="{{ $fieldName }}"
-                                                                   accept="{{ $allowedExtensions }}"
-                                                                   {{ $isRequired ? 'required' : '' }}
-                                                                   onchange="previewFile(this, '{{ $item->id }}')"
-                                                                   id="file_input_{{ $item->id }}">
+                                                                class="form-control @error($fieldName) is-invalid @enderror"
+                                                                name="{{ $fieldName }}"
+                                                                accept="{{ $allowedExtensions }}"
+                                                                {{ $isRequired ? 'required' : '' }}
+                                                                onchange="previewFile(this, '{{ $item->id }}')"
+                                                                id="file_input_{{ $item->id }}">
                                                         @endif
 
-                                                        <div id="preview_{{ $item->id }}" class="preview-container mt-3" style="display: none;">
+                                                        <div id="preview_{{ $item->id }}"
+                                                            class="preview-container mt-3" style="display: none;">
                                                             <div class="preview-content">
                                                                 <img id="img_{{ $item->id }}" class="preview-image"
-                                                                     style="display: none; max-width: 100px;">
-                                                                <div id="pdf_{{ $item->id }}" class="pdf-preview text-center"
-                                                                     style="display: none;">
+                                                                    style="display: none; max-width: 100px;">
+                                                                <div id="pdf_{{ $item->id }}"
+                                                                    class="pdf-preview text-center"
+                                                                    style="display: none;">
                                                                     <i class="bi bi-file-earmark-pdf text-danger fs-1"></i>
                                                                     <p class="small text-muted mt-2">PDF File</p>
                                                                 </div>
                                                                 <div class="file-info mt-2">
-                                                                    <small id="filename_{{ $item->id }}" class="text-muted d-block"></small>
-                                                                    <small id="filesize_{{ $item->id }}" class="text-muted"></small>
+                                                                    <small id="filename_{{ $item->id }}"
+                                                                        class="text-muted d-block"></small>
+                                                                    <small id="filesize_{{ $item->id }}"
+                                                                        class="text-muted"></small>
                                                                 </div>
-                                                                <button type="button" class="btn btn-sm btn-outline-danger mt-2"
-                                                                        onclick="removePreview('{{ $item->id }}')">
+                                                                <button type="button"
+                                                                    class="btn btn-sm btn-outline-danger mt-2"
+                                                                    onclick="removePreview('{{ $item->id }}')">
                                                                     <i class="bi bi-trash"></i> Hapus
                                                                 </button>
                                                             </div>
                                                         </div>
                                                     @elseif ($item->type === 'text_input')
                                                         <input type="text"
-                                                               class="form-control @error($fieldName) is-invalid @enderror"
-                                                               name="{{ $fieldName }}" 
-                                                               value="{{ $existingValue }}"
-                                                               {{ $isRequired ? 'required' : '' }}
-                                                               placeholder="Masukkan {{ strtolower($item->document_name) }}...">
+                                                            class="form-control @error($fieldName) is-invalid @enderror"
+                                                            name="{{ $fieldName }}" value="{{ $existingValue }}"
+                                                            {{ $isRequired ? 'required' : '' }}
+                                                            placeholder="Masukkan {{ strtolower($item->document_name) }}...">
                                                     @elseif ($item->type === 'textarea')
-                                                        <textarea class="form-control @error($fieldName) is-invalid @enderror" 
-                                                                  name="{{ $fieldName }}" rows="3"
-                                                                  {{ $isRequired ? 'required' : '' }} 
-                                                                  placeholder="Masukkan {{ strtolower($item->document_name) }}...">{{ $existingValue }}</textarea>
+                                                        <textarea class="form-control @error($fieldName) is-invalid @enderror" name="{{ $fieldName }}" rows="3"
+                                                            {{ $isRequired ? 'required' : '' }} placeholder="Masukkan {{ strtolower($item->document_name) }}...">{{ $existingValue }}</textarea>
                                                     @elseif ($item->type === 'select')
-                                                        <select class="form-select @error($fieldName) is-invalid @enderror"
-                                                                name="{{ $fieldName }}"
-                                                                {{ $isRequired ? 'required' : '' }}>
-                                                            <option value="">Pilih {{ strtolower($item->document_name) }}...</option>
+                                                        <select
+                                                            class="form-select @error($fieldName) is-invalid @enderror"
+                                                            name="{{ $fieldName }}"
+                                                            {{ $isRequired ? 'required' : '' }}>
+                                                            <option value="">Pilih
+                                                                {{ strtolower($item->document_name) }}...</option>
                                                             @if ($item->options)
                                                                 @foreach (json_decode($item->options, true) as $option)
                                                                     <option value="{{ $option }}"
-                                                                            {{ $existingValue == $option ? 'selected' : '' }}>
+                                                                        {{ $existingValue == $option ? 'selected' : '' }}>
                                                                         {{ $option }}
                                                                     </option>
                                                                 @endforeach
@@ -780,27 +817,31 @@
                                                         @php
                                                             $checkboxValues = is_string($existingValue)
                                                                 ? explode(',', $existingValue)
-                                                                : (is_array($existingValue) ? $existingValue : []);
+                                                                : (is_array($existingValue)
+                                                                    ? $existingValue
+                                                                    : []);
                                                         @endphp
                                                         @if ($item->options)
                                                             <div class="checkbox-group">
                                                                 @foreach (json_decode($item->options, true) as $option)
                                                                     <label class="checkbox-option">
                                                                         <input type="checkbox"
-                                                                               name="{{ $fieldName }}[]"
-                                                                               value="{{ $option }}"
-                                                                               {{ in_array($option, $checkboxValues) ? 'checked' : '' }}>
+                                                                            name="{{ $fieldName }}[]"
+                                                                            value="{{ $option }}"
+                                                                            {{ in_array($option, $checkboxValues) ? 'checked' : '' }}>
                                                                         <span class="checkbox-custom"></span>
-                                                                        <span class="checkbox-label">{{ $option }}</span>
+                                                                        <span
+                                                                            class="checkbox-label">{{ $option }}</span>
                                                                     </label>
                                                                 @endforeach
                                                             </div>
                                                         @else
                                                             <label class="checkbox-option">
                                                                 <input type="checkbox" name="{{ $fieldName }}"
-                                                                       value="1" {{ $existingValue ? 'checked' : '' }}>
+                                                                    value="1" {{ $existingValue ? 'checked' : '' }}>
                                                                 <span class="checkbox-custom"></span>
-                                                                <span class="checkbox-label">{{ $item->document_name }}</span>
+                                                                <span
+                                                                    class="checkbox-label">{{ $item->document_name }}</span>
                                                             </label>
                                                         @endif
                                                     @endif
@@ -811,7 +852,8 @@
 
                                                     <small class="text-muted d-block mt-2">
                                                         @if ($item->type === 'file_upload')
-                                                            Format: {{ str_replace(',', ', ', strtoupper(str_replace('.', '', $allowedExtensions))) }}
+                                                            Format:
+                                                            {{ str_replace(',', ', ', strtoupper(str_replace('.', '', $allowedExtensions))) }}
                                                             (Max: {{ $maxFileSize }}MB)
                                                         @endif
                                                         @if ($isRequired)
@@ -872,7 +914,8 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label required">Apakah Anda bisa melakukan <strong>Share Screen</strong>?</label>
+                        <label class="form-label required">Apakah Anda bisa melakukan <strong>Share
+                                Screen</strong>?</label>
                         <div class="radio-inline">
                             <label class="radio-option">
                                 <input type="radio" name="bisa_share_screen" value="ya"
@@ -921,21 +964,22 @@
                     <div class="form-group">
                         <label class="form-label">Aplikasi yang Pernah Digunakan</label>
                         @php
-                            $currentApps = old('aplikasi_yang_digunakan', 
-                                is_string(optional($existingApl)->aplikasi_yang_digunakan) 
+                            $currentApps = old(
+                                'aplikasi_yang_digunakan',
+                                is_string(optional($existingApl)->aplikasi_yang_digunakan)
                                     ? explode(', ', optional($existingApl)->aplikasi_yang_digunakan)
-                                    : optional($existingApl)->aplikasi_yang_digunakan ?? []
+                                    : optional($existingApl)->aplikasi_yang_digunakan ?? [],
                             );
                             $currentApps = is_array($currentApps) ? $currentApps : [];
                         @endphp
 
                         <div class="checkbox-grid two-columns">
                             @foreach ([
-                                'Microsoft Power Point' => 'Microsoft PowerPoint',
-                                'Microsoft Excel' => 'Microsoft Excel', 
-                                'Microsoft Word' => 'Microsoft Word',
-                                'Video Conference (Zoom/Google Meet)' => 'Video Conference',
-                            ] as $value => $label)
+            'Microsoft Power Point' => 'Microsoft PowerPoint',
+            'Microsoft Excel' => 'Microsoft Excel',
+            'Microsoft Word' => 'Microsoft Word',
+            'Video Conference (Zoom/Google Meet)' => 'Video Conference',
+        ] as $value => $label)
                                 <label class="checkbox-option">
                                     <input type="checkbox" name="aplikasi_yang_digunakan[]" value="{{ $value }}"
                                         {{ in_array($value, $currentApps) ? 'checked' : '' }}>
@@ -952,42 +996,49 @@
 
                 <hr>
 
-                <!-- Pernyataan Pemohon -->
-                <div class="section-header">
-                    <div class="section-number">11</div>
-                    <h3>Pernyataan Pemohon</h3>
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">Nama Lengkap Untuk Pencetakan Sertifikat (Tanpa Gelar)</label>
+                            <input type="text" class="form-input @error('nama_lengkap_ktp') error @enderror"
+                                name="nama_lengkap_ktp"
+                                value="{{ old('nama_lengkap_ktp', optional($existingApl)->nama_lengkap_ktp ?? optional($existingApl)->nama_lengkap) }}"
+                                placeholder="Nama untuk sertifikat">
+                            @error('nama_lengkap_ktp')
+                                <div class="error-message">{{ $message }}</div>
+                            @enderror
+                            <div class="form-hint">Nama ini akan tercetak pada sertifikat</div>
+                        </div>
+
+                        <h5 class="card-title text-left mb-3 fw-bold text-uppercase">
+                            Pernyataan Pemohon
+                        </h5>
+
+                        <div class="border rounded p-4"
+                            style="background-color: #e3f2fd; border-color: #1565c0 !important;">
+                            <div class="form-check d-flex align-items-start">
+                                <input class="form-check-input me-3 mt-1" type="checkbox" name="pernyataan_benar"
+                                    value="1" id="pernyataan_benar"
+                                    style="transform: scale(1.2); accent-color: #1565c0;"
+                                    {{ old('pernyataan_benar', optional($existingApl)->pernyataan_benar) ? 'checked' : '' }}
+                                    required>
+                                <label class="form-check-label lh-base" style="color: #0d47a1;" for="pernyataan_benar">
+                                    Dengan ini, saya menyatakan bahwa saya telah menuliskan nama lengkap dengan benar.
+                                    Nama tersebut dapat digunakan untuk pencetakan sertifikat kompetensi apabila saya
+                                    dinyatakan kompeten dalam proses asesmen ini.
+                                </label>
+                            </div>
+                        </div>
+
+                        @error('pernyataan_benar')
+                            <div class="alert alert-danger py-2 px-3 mt-2 mb-0">
+                                {{ $message }}</div>
+                        @enderror
+                    </div>
                 </div>
 
-                <div class="declaration-box">
-                    <h5>Dengan ini, saya menyatakan bahwa saya telah menuliskan nama lengkap dengan benar. Nama tersebut
-                        dapat digunakan untuk pencetakan sertifikat kompetensi apabila saya dinyatakan kompeten dalam proses
-                        asesmen ini.</h5>
-                    <label class="checkbox-option agreement-option">
-                        <input type="checkbox" name="pernyataan_benar" value="1"
-                            {{ old('pernyataan_benar', optional($existingApl)->pernyataan_benar) ? 'checked' : '' }} required>
-                        <span class="checkbox-custom"></span>
-                        <span class="checkbox-label">
-                            <strong>Saya menyetujui semua pernyataan di atas dan data yang saya berikan adalah benar</strong>
-                        </span>
-                    </label>
-                    @error('pernyataan_benar')
-                        <div class="error-message">{{ $message }}</div>
-                    @enderror
-                </div>
 
                 <div class="signature-section col-5">
-                    <div class="form-group">
-                        <label class="form-label">Nama Lengkap TANPA GELAR (untuk sertifikat)</label>
-                        <input type="text" class="form-input @error('nama_lengkap_ktp') error @enderror"
-                            name="nama_lengkap_ktp"
-                            value="{{ old('nama_lengkap_ktp', optional($existingApl)->nama_lengkap_ktp ?? optional($existingApl)->nama_lengkap) }}"
-                            placeholder="Nama untuk sertifikat">
-                        @error('nama_lengkap_ktp')
-                            <div class="error-message">{{ $message }}</div>
-                        @enderror
-                        <div class="form-hint">Nama ini akan tercetak pada sertifikat</div>
-                    </div>
-
                     <div class="form-group">
                         <label class="form-label required">Tanda Tangan Digital</label>
 
@@ -995,9 +1046,9 @@
                             <div class="existing-signature mb-3">
                                 <div class="d-flex align-items-center p-3 border rounded bg-success bg-opacity-10">
                                     <div class="signature-preview me-3">
-                                        <img src="{{ old('tanda_tangan_asesi', optional($existingApl)->tanda_tangan_asesi) }}"
-                                            alt="Tanda tangan tersimpan" class="signature-image border rounded"
-                                            style="max-width: 150px; max-height: 80px;">
+                                        <img src="{{ asset('storage/' . old('tanda_tangan_asesi', optional($existingApl)->tanda_tangan_asesi)) }}"
+                                            alt="Tanda tangan {{ optional($existingApl)->nama_lengkap ?? 'Anda' }}"
+                                            class="signature-image" style="max-width: 200px; max-height: 100px;">
                                     </div>
                                     <div class="signature-info">
                                         <i class="bi bi-check-circle-fill text-success me-1"></i>
@@ -1012,6 +1063,7 @@
                             </div>
                             <input type="hidden" name="existing_signature" value="1">
                         @else
+                            <!-- Canvas signature pad -->
                             <div class="signature-pad-wrapper position-relative border rounded" style="height:200px;">
                                 <canvas id="signature-canvas" class="w-100 h-100" style="cursor: crosshair;"></canvas>
                                 <div id="signature-placeholder"
@@ -1104,5 +1156,4 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script src="{{ asset('js/apl01-form.js') }}"></script>
-
 @endpush

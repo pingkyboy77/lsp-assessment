@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CertificationScheme;
 use App\Models\KelompokKerja;
-use App\Models\BuktiPortofolio;
 use App\Models\UnitKompetensi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +16,7 @@ class KelompokKerjaController extends Controller
     {
         $kelompoks = $scheme
             ->kelompokKerjas()
-            ->with(['buktiPortofolios'])
+            ->withCount(['unitKompetensis', 'activeUnitKompetensis'])
             ->ordered()
             ->paginate(20);
 
@@ -26,7 +25,10 @@ class KelompokKerjaController extends Controller
 
     public function create(CertificationScheme $scheme)
     {
-        return view('admin.kelompok-kerja.create', compact('scheme'));
+        $potensiAsesiOptions = KelompokKerja::POTENSI_ASESI_OPTIONS;
+        $usedPLevels = $scheme->kelompokKerjas()->whereNotNull('p_level')->pluck('p_level')->toArray();
+
+        return view('admin.kelompok-kerja.create', compact('scheme', 'potensiAsesiOptions', 'usedPLevels'));
     }
 
     public function store(Request $request, CertificationScheme $scheme)
@@ -34,8 +36,24 @@ class KelompokKerjaController extends Controller
         $validator = Validator::make($request->all(), [
             'nama_kelompok' => 'required|string|max:200',
             'deskripsi' => 'nullable|string|max:1000',
+            'p_level' => 'nullable|integer|min:1|max:10',
+            'potensi_asesi' => 'nullable|array',
+            'potensi_asesi.*' => 'in:p1,p2,p3,p4,p5',
             'is_active' => 'boolean',
         ]);
+
+        // Validasi custom: P Level harus unik per scheme
+        $validator->after(function ($validator) use ($request, $scheme) {
+            if ($request->p_level) {
+                $exists = $scheme->kelompokKerjas()
+                    ->where('p_level', $request->p_level)
+                    ->exists();
+
+                if ($exists) {
+                    $validator->errors()->add('p_level', 'P Level ' . $request->p_level . ' sudah digunakan di kelompok kerja lain.');
+                }
+            }
+        });
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
@@ -48,6 +66,8 @@ class KelompokKerjaController extends Controller
             $kelompok = $scheme->kelompokKerjas()->create([
                 'nama_kelompok' => $request->nama_kelompok,
                 'deskripsi' => $request->deskripsi,
+                'p_level' => $request->p_level,
+                'potensi_asesi' => $request->potensi_asesi ?? [],
                 'sort_order' => $maxSort + 1,
                 'is_active' => $request->boolean('is_active', true),
             ]);
@@ -69,8 +89,12 @@ class KelompokKerjaController extends Controller
     public function show(CertificationScheme $scheme, KelompokKerja $kelompokKerja)
     {
         $kelompokKerja = $kelompokKerja->load([
-            'buktiPortofolios' => function ($query) {
-                $query->ordered();
+            'unitKompetensis' => function ($query) {
+                $query->withPivot(['sort_order', 'is_active'])
+                    ->with(['elemenKompetensis', 'portfolioFiles' => function ($query) {
+                        $query->where('is_active', true);
+                    }])
+                    ->orderByPivot('sort_order');
             },
         ]);
 
@@ -79,7 +103,14 @@ class KelompokKerjaController extends Controller
 
     public function edit(CertificationScheme $scheme, KelompokKerja $kelompokKerja)
     {
-        return view('admin.kelompok-kerja.edit', compact('scheme', 'kelompokKerja'));
+        $potensiAsesiOptions = KelompokKerja::POTENSI_ASESI_OPTIONS;
+        $usedPLevels = $scheme->kelompokKerjas()
+            ->whereNotNull('p_level')
+            ->where('id', '!=', $kelompokKerja->id)
+            ->pluck('p_level')
+            ->toArray();
+
+        return view('admin.kelompok-kerja.edit', compact('scheme', 'kelompokKerja', 'potensiAsesiOptions', 'usedPLevels'));
     }
 
     public function update(Request $request, CertificationScheme $scheme, KelompokKerja $kelompokKerja)
@@ -87,8 +118,25 @@ class KelompokKerjaController extends Controller
         $validator = Validator::make($request->all(), [
             'nama_kelompok' => 'required|string|max:200',
             'deskripsi' => 'nullable|string|max:1000',
+            'p_level' => 'nullable|integer|min:1|max:10',
+            'potensi_asesi' => 'nullable|array',
+            'potensi_asesi.*' => 'in:p1,p2,p3,p4,p5',
             'is_active' => 'boolean',
         ]);
+
+        // Validasi custom: P Level harus unik per scheme (kecuali untuk kelompok ini sendiri)
+        $validator->after(function ($validator) use ($request, $scheme, $kelompokKerja) {
+            if ($request->p_level) {
+                $exists = $scheme->kelompokKerjas()
+                    ->where('p_level', $request->p_level)
+                    ->where('id', '!=', $kelompokKerja->id)
+                    ->exists();
+
+                if ($exists) {
+                    $validator->errors()->add('p_level', 'P Level ' . $request->p_level . ' sudah digunakan di kelompok kerja lain.');
+                }
+            }
+        });
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
@@ -99,6 +147,8 @@ class KelompokKerjaController extends Controller
             $kelompokKerja->update([
                 'nama_kelompok' => $request->nama_kelompok,
                 'deskripsi' => $request->deskripsi,
+                'p_level' => $request->p_level,
+                'potensi_asesi' => $request->potensi_asesi ?? [],
                 'is_active' => $request->boolean('is_active', true),
             ]);
 
@@ -120,10 +170,16 @@ class KelompokKerjaController extends Controller
     {
         DB::beginTransaction();
         try {
+            // Detach all unit kompetensi relationships
+            $kelompokKerja->unitKompetensis()->detach();
+
+            // Delete the kelompok kerja
             $kelompokKerja->delete();
+
             DB::commit();
 
-            return redirect()->route('admin.schemes.kelompok-kerja.index', $scheme)->with('success', 'Kelompok kerja berhasil dihapus.');
+            return redirect()->route('admin.schemes.kelompok-kerja.index', $scheme)
+                ->with('success', 'Kelompok kerja berhasil dihapus.');
         } catch (\Exception $e) {
             DB::rollback();
             return redirect()
@@ -151,7 +207,15 @@ class KelompokKerjaController extends Controller
 
         DB::beginTransaction();
         try {
-            $scheme->reorderKelompokKerja($request->kelompok_ids);
+            foreach ($request->kelompok_ids as $index => $kelompokId) {
+                $scheme->kelompokKerjas()
+                    ->where('id', $kelompokId)
+                    ->update([
+                        'sort_order' => $index + 1,
+                        'updated_at' => now(),
+                    ]);
+            }
+
             DB::commit();
 
             return response()->json([
@@ -199,17 +263,19 @@ class KelompokKerjaController extends Controller
         }
     }
 
+    /* ===================== UNIT KOMPETENSI MANAGEMENT ===================== */
+
     /**
      * Show the manage unit kompetensi page
      */
     public function manageUnitKompetensi(CertificationScheme $scheme, KelompokKerja $kelompokKerja)
     {
-        // Pastikan kelompok kerja belongs to scheme
+        // Ensure kelompok kerja belongs to scheme
         if ($kelompokKerja->certification_scheme_id !== $scheme->id) {
             abort(404, 'Kelompok kerja tidak ditemukan dalam skema ini.');
         }
 
-        // Get units already assigned to this kelompok kerja dengan pivot data
+        // Get units already assigned to this kelompok kerja with pivot data
         $assignedUnits = $kelompokKerja
             ->unitKompetensis()
             ->withPivot(['sort_order', 'is_active', 'created_at', 'updated_at'])
@@ -234,7 +300,7 @@ class KelompokKerjaController extends Controller
      */
     public function updateUnitKompetensi(Request $request, CertificationScheme $scheme, KelompokKerja $kelompokKerja)
     {
-        // Pastikan kelompok kerja belongs to scheme
+        // Ensure kelompok kerja belongs to scheme
         if ($kelompokKerja->certification_scheme_id !== $scheme->id) {
             return response()->json(
                 [
@@ -246,13 +312,8 @@ class KelompokKerjaController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'unit_kompetensi_ids' => 'nullable|array', // <--- ubah dari required
+            'unit_kompetensi_ids' => 'nullable|array',
             'unit_kompetensi_ids.*' => 'exists:unit_kompetensis,id',
-            'changes' => 'array',
-            'changes.*.action' => 'required|string|in:add,remove,update_sort,toggle_status',
-            'changes.*.unit_id' => 'required|exists:unit_kompetensis,id',
-            'changes.*.sort_order' => 'sometimes|integer|min:1',
-            'changes.*.is_active' => 'sometimes|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -268,31 +329,35 @@ class KelompokKerjaController extends Controller
 
         DB::beginTransaction();
         try {
-            // Validate that all units belong to the scheme
-            $validUnitIds = $scheme->unitKompetensis()->pluck('id')->toArray();
-            $invalidUnits = array_diff($request->unit_kompetensi_ids, $validUnitIds);
+            $unitIds = $request->unit_kompetensi_ids ?? [];
 
-            if (!empty($invalidUnits)) {
-                return response()->json(
-                    [
-                        'success' => false,
-                        'message' => 'Beberapa unit kompetensi tidak valid untuk skema ini.',
-                    ],
-                    422,
-                );
+            // Validate that all units belong to the scheme
+            if (!empty($unitIds)) {
+                $validUnitIds = $scheme->unitKompetensis()->pluck('id')->toArray();
+                $invalidUnits = array_diff($unitIds, $validUnitIds);
+
+                if (!empty($invalidUnits)) {
+                    return response()->json(
+                        [
+                            'success' => false,
+                            'message' => 'Beberapa unit kompetensi tidak valid untuk skema ini.',
+                        ],
+                        422,
+                    );
+                }
             }
 
             // Get current assignments
             $currentAssignments = $kelompokKerja->unitKompetensis()->pluck('unit_kompetensis.id')->toArray();
 
             // Detach units that are no longer in the list
-            $unitsToRemove = array_diff($currentAssignments, $request->unit_kompetensi_ids);
+            $unitsToRemove = array_diff($currentAssignments, $unitIds);
             if (!empty($unitsToRemove)) {
                 $kelompokKerja->unitKompetensis()->detach($unitsToRemove);
             }
 
             // Process each unit in the new order
-            foreach ($request->unit_kompetensi_ids as $index => $unitId) {
+            foreach ($unitIds as $index => $unitId) {
                 $sortOrder = $index + 1;
 
                 // Check if unit is already attached
@@ -313,40 +378,13 @@ class KelompokKerjaController extends Controller
                 }
             }
 
-            // Process individual changes if provided
-            if ($request->has('changes')) {
-                foreach ($request->changes as $change) {
-                    $unitId = $change['unit_id'];
-
-                    switch ($change['action']) {
-                        case 'toggle_status':
-                            if (isset($change['is_active'])) {
-                                $kelompokKerja->unitKompetensis()->updateExistingPivot($unitId, [
-                                    'is_active' => $change['is_active'],
-                                    'updated_at' => now(),
-                                ]);
-                            }
-                            break;
-
-                        case 'update_sort':
-                            if (isset($change['sort_order'])) {
-                                $kelompokKerja->unitKompetensis()->updateExistingPivot($unitId, [
-                                    'sort_order' => $change['sort_order'],
-                                    'updated_at' => now(),
-                                ]);
-                            }
-                            break;
-                    }
-                }
-            }
-
             DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Unit kompetensi berhasil diperbarui.',
                 'data' => [
-                    'assigned_count' => count($request->unit_kompetensi_ids),
+                    'assigned_count' => count($unitIds),
                     'removed_count' => count($unitsToRemove),
                 ],
             ]);
@@ -686,36 +724,157 @@ class KelompokKerjaController extends Controller
         }
     }
 
+    /**
+     * Duplicate kelompok kerja with its unit assignments
+     */
+    public function duplicate(Request $request, CertificationScheme $scheme, KelompokKerja $kelompokKerja)
+    {
+        $validator = Validator::make($request->all(), [
+            'nama_kelompok' => 'required|string|max:200',
+            'copy_units' => 'boolean',
+        ]);
 
-//     public function removeUnitKompetensi(Request $request, KelompokKerja $kelompokKerja)
-// {
-//     $request->validate([
-//         'unit_id' => 'required|exists:unit_kompetensis,id',
-//     ]);
+        if ($validator->fails()) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Data tidak valid.',
+                    'errors' => $validator->errors(),
+                ],
+                422,
+            );
+        }
 
-//     $unitId = $request->input('unit_id');
+        DB::beginTransaction();
+        try {
+            $copyUnits = $request->boolean('copy_units', true);
+            $duplicate = $kelompokKerja->duplicate($request->nama_kelompok, $copyUnits);
 
-//     try {
-//         // Hapus pivot (detach)
-//         $kelompokKerja->unitKompetensis()->detach($unitId);
+            DB::commit();
 
-//         if ($request->ajax()) {
-//             return response()->json([
-//                 'success' => true,
-//                 'message' => 'Unit kompetensi berhasil dilepas dari kelompok kerja.'
-//             ]);
-//         }
+            return response()->json([
+                'success' => true,
+                'message' => 'Kelompok kerja berhasil diduplikasi.',
+                'data' => [
+                    'id' => $duplicate->id,
+                    'nama_kelompok' => $duplicate->nama_kelompok,
+                    'units_copied' => $copyUnits ? $kelompokKerja->unitKompetensis->count() : 0,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Gagal menduplikasi kelompok kerja: ' . $e->getMessage(),
+                ],
+                500,
+            );
+        }
+    }
 
-//         return redirect()->back()->with('success', 'Unit kompetensi berhasil dilepas dari kelompok kerja.');
-//     } catch (\Exception $e) {
-//         if ($request->ajax()) {
-//             return response()->json([
-//                 'success' => false,
-//                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-//             ]);
-//         }
+    /**
+     * Get units for API/AJAX requests
+     */
+    public function getUnits(CertificationScheme $scheme, KelompokKerja $kelompokKerja)
+    {
+        try {
+            $units = $kelompokKerja->unitKompetensis()
+                ->withPivot(['sort_order', 'is_active'])
+                ->withCount(['portfolioFiles' => function ($query) {
+                    $query->where('is_active', true);
+                }])
+                ->orderByPivot('sort_order')
+                ->get()
+                ->map(function ($unit) {
+                    return [
+                        'id' => $unit->id,
+                        'kode_unit' => $unit->kode_unit,
+                        'judul_unit' => $unit->judul_unit,
+                        'is_active' => $unit->pivot->is_active,
+                        'sort_order' => $unit->pivot->sort_order,
+                        'portfolio_file_count' => $unit->portfolio_files_count ?? 0,
+                        'elements_count' => $unit->elemenKompetensis ? $unit->elemenKompetensis->count() : 0,
+                    ];
+                });
 
-//         return redirect()->back()->with('error', 'Terjadi kesalahan saat melepas unit kompetensi.');
-//     }
-// }
+            return response()->json([
+                'success' => true,
+                'data' => $units,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Gagal mengambil data unit kompetensi: ' . $e->getMessage(),
+                ],
+                500,
+            );
+        }
+    }
+
+    /**
+     * Export kelompok kerja data
+     */
+    public function export(CertificationScheme $scheme, KelompokKerja $kelompokKerja)
+    {
+        try {
+            $kelompokKerja->loadWithUnits();
+
+            $data = [
+                'kelompok_info' => [
+                    'id' => $kelompokKerja->id,
+                    'nama_kelompok' => $kelompokKerja->nama_kelompok,
+                    'deskripsi' => $kelompokKerja->deskripsi,
+                    'is_active' => $kelompokKerja->is_active,
+                    'sort_order' => $kelompokKerja->sort_order,
+                    'created_at' => $kelompokKerja->created_at->format('d/m/Y H:i'),
+                    'updated_at' => $kelompokKerja->updated_at->format('d/m/Y H:i'),
+                ],
+                'scheme_info' => [
+                    'id' => $scheme->id,
+                    'nama' => $scheme->nama,
+                    'code_1' => $scheme->code_1,
+                    'jenjang' => $scheme->jenjang,
+                ],
+                'units' => $kelompokKerja->unitKompetensis->map(function ($unit) {
+                    return [
+                        'id' => $unit->id,
+                        'kode_unit' => $unit->kode_unit,
+                        'judul_unit' => $unit->judul_unit,
+                        'pivot_data' => [
+                            'sort_order' => $unit->pivot->sort_order,
+                            'is_active' => $unit->pivot->is_active,
+                            'assigned_at' => $unit->pivot->created_at->format('d/m/Y H:i'),
+                        ],
+                        'elements_count' => $unit->elemenKompetensis ? $unit->elemenKompetensis->count() : 0,
+                        'portfolio_files_count' => $unit->portfolioFiles ? $unit->portfolioFiles->where('is_active', true)->count() : 0,
+                    ];
+                }),
+                'statistics' => [
+                    'total_units' => $kelompokKerja->unitKompetensis->count(),
+                    'active_units' => $kelompokKerja->unitKompetensis->where('pivot.is_active', true)->count(),
+                    'total_elements' => $kelompokKerja->unitKompetensis->sum(function ($unit) {
+                        return $unit->elemenKompetensis ? $unit->elemenKompetensis->count() : 0;
+                    }),
+                    'total_portfolio_files' => $kelompokKerja->unitKompetensis->sum(function ($unit) {
+                        return $unit->portfolioFiles ? $unit->portfolioFiles->where('is_active', true)->count() : 0;
+                    }),
+                ],
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Gagal mengexport data: ' . $e->getMessage(),
+                ],
+                500,
+            );
+        }
+    }
 }

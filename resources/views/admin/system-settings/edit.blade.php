@@ -110,7 +110,7 @@
                 </div>
 
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary-custom">
+                    <button type="submit" class=" btn-primary-custom">
                         <i class="bi bi-check-lg me-2"></i>Update Setting
                     </button>
                     <a href="{{ route('admin.system-settings.index') }}" class="btn btn-secondary">

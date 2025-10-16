@@ -36,6 +36,7 @@ class RegisteredUserController extends Controller
             'id_number' => 'required|string|max:255|unique:users',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|confirmed|min:8',
+            'g-recaptcha-response' => 'required|captcha',
         ]);
         $user = User::create([
             'name' => $request->name,

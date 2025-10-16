@@ -1,9 +1,10 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
-use App\Http\Controllers\Controller;
 use App\Models\Field;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
 
 class FieldController extends Controller
@@ -81,13 +82,12 @@ class FieldController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'kode_bidang' => 'required|string|max:20|unique:fields,kode_bidang',
-            'code_2' => 'required|string|max:10|unique:fields,code_2',
+            'kode_bidang' => 'required|string|max:20',
+            'code_2' => 'required|string|max:1000|unique:fields,code_2',
             'bidang' => 'required|string|max:255',
             'bidang_ing' => 'nullable|string|max:255',
             'kbbli_bidang' => 'nullable|string|max:20',
             'kode_web' => 'nullable|string|max:20',
-            'description' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 
@@ -118,29 +118,70 @@ class FieldController extends Controller
     public function update(Request $request, Field $field)
     {
         $validator = Validator::make($request->all(), [
-            'kode_bidang' => 'required|string|max:20|unique:fields,kode_bidang,' . $field->id,
-            'code_2' => 'required|string|max:10|unique:fields,code_2,' . $field->id,
+            'kode_bidang' => 'required|string|max:20',
+            'code_2' => 'required|string|max:1000|unique:fields,code_2,' . $field->id,
             'bidang' => 'required|string|max:255',
             'bidang_ing' => 'nullable|string|max:255',
             'kbbli_bidang' => 'nullable|string|max:20',
             'kode_web' => 'nullable|string|max:20',
-            'description' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
+        if ($field->code_2 !== $request->code_2) {
+            $relatedCounts = $this->getRelatedTablesCount($field->code_2);
+            $totalRelated = array_sum($relatedCounts);
 
+            if ($totalRelated > 0) {
+                // Log atau tampilkan info berapa data yang akan terpengaruh
+                \Log::info("Updating code_2 from {$field->code_2} to {$request->code_2} will affect {$totalRelated} related records");
+            }
+        }
         try {
-            $field->update($request->all());
+            DB::transaction(function () use ($field, $request) {
+                $oldCode2 = $field->code_2;
+                $newCode2 = $request->code_2;
 
-            return redirect()->route('admin.fields.index')->with('success', 'Bidang berhasil diperbarui.');
+                if ($oldCode2 !== $newCode2) {
+                    // Set constraint jadi deferred untuk transaction ini
+                    DB::statement('SET CONSTRAINTS certification_schemes_code_2_foreign DEFERRED;');
+
+                    // Update fields
+                    $field->update($request->only(['kode_bidang', 'code_2', 'bidang', 'bidang_ing', 'kbbli_bidang', 'kode_web', 'is_active']));
+
+                    // Update certification_schemes
+                    DB::table('certification_schemes')
+                        ->where('code_2', $oldCode2)
+                        ->update(['code_2' => $newCode2]);
+
+                    // Constraint akan dicek di akhir transaction
+                } else {
+                    $field->update($request->only(['kode_bidang', 'code_2', 'bidang', 'bidang_ing', 'kbbli_bidang', 'kode_web', 'is_active']));
+                }
+            });
+
+            return redirect()->route('admin.fields.index')->with('success', 'Bidang dan data terkait berhasil diperbarui.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat memperbarui data.')->withInput();
+            return redirect()
+                ->back()
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                ->withInput();
         }
     }
+    private function getRelatedTablesCount($code2)
+    {
+        $counts = [];
 
+        // Cek certification_schemes
+        $counts['certification_schemes'] = DB::table('certification_schemes')->where('code_2', $code2)->count();
+
+        // Tambahkan tabel lain sesuai kebutuhan
+        // $counts['other_table'] = DB::table('other_table')->where('field_code_2', $code2)->count();
+
+        return $counts;
+    }
     /**
      * Remove the specified resource from storage.
      */

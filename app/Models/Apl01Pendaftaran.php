@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class Apl01Pendaftaran extends Model
@@ -13,19 +14,7 @@ class Apl01Pendaftaran extends Model
 
     protected $table = 'apl_01_pendaftarans';
 
-    protected $fillable = [
-        'nomor_apl_01', 'selected_requirement_template_id', 'user_id', 'certification_scheme_id', 
-        'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'kebangsaan', 
-        'alamat_rumah', 'no_telp_rumah', 'kota_rumah', 'provinsi_rumah', 'kode_pos', 'no_hp', 
-        'email', 'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 'nama_tempat_kerja', 
-        'kategori_pekerjaan', 'nama_jalan_kantor', 'kota_kantor', 'provinsi_kantor', 
-        'kode_pos_kantor', 'negara_kantor', 'no_telp_kantor', 'tujuan_asesmen', 'tuk', 
-        'kategori_peserta', 'training_provider', 'pernah_asesmen_lsp', 'pernah_aplikasi', 
-        'aplikasi_yang_digunakan', 'bisa_share_screen', 'bisa_gunakan_browser', 
-        'nama_lengkap_ktp', 'pernyataan_benar', 'tanda_tangan_asesi', 'tanggal_tanda_tangan_asesi', 
-        'tanda_tangan_asesor', 'tanggal_tanda_tangan_asesor', 'nama_asesor', 'requirement_answers', 
-        'status', 'notes', 'submitted_at', 'reviewed_at', 'reviewed_by'
-    ];
+    protected $fillable = ['nomor_apl_01', 'selected_requirement_template_id', 'user_id', 'certification_scheme_id', 'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'kebangsaan', 'alamat_rumah', 'no_telp_rumah', 'kota_rumah', 'provinsi_rumah', 'kode_pos', 'no_hp', 'email', 'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 'nama_tempat_kerja', 'kategori_pekerjaan', 'nama_jalan_kantor', 'kota_kantor', 'provinsi_kantor', 'kode_pos_kantor', 'negara_kantor', 'no_telp_kantor', 'tujuan_asesmen', 'tuk', 'kategori_peserta', 'training_provider', 'pernah_asesmen_lsp', 'pernah_aplikasi', 'aplikasi_yang_digunakan', 'bisa_share_screen', 'bisa_gunakan_browser', 'nama_lengkap_ktp', 'pernyataan_benar', 'tanda_tangan_asesi', 'tanggal_tanda_tangan_asesi', 'tanda_tangan_asesor', 'tanggal_tanda_tangan_asesor', 'nama_asesor', 'requirement_answers', 'status', 'notes', 'submitted_at', 'reviewed_at', 'reviewed_by', 'completed_at'];
 
     protected $casts = [
         'tanggal_lahir' => 'date',
@@ -36,29 +25,82 @@ class Apl01Pendaftaran extends Model
         'pernyataan_benar' => 'boolean',
         'tanggal_tanda_tangan_asesi' => 'datetime',
         'tanggal_tanda_tangan_asesor' => 'datetime',
+        'completed_at' => 'datetime',
     ];
+    /* ===================== REVIEW & COMPLETION METHODS ===================== */
 
-    /* ===================== LIFECYCLE HOOKS ===================== */
-
-    protected static function boot()
+    public function rekomendasiLsp()
     {
-        parent::boot();
-
-        static::creating(function ($model) {
-            if (empty($model->nomor_apl_01)) {
-                // Hanya generate jika NumberSequence class ada
-                if (class_exists('App\Models\NumberSequence')) {
-                    $model->nomor_apl_01 = \App\Models\NumberSequence::generate('apl_01_pendaftaran');
-                }
-            }
-        });
+        return $this->hasOne(RekomendasiLSP::class, 'apl01_id');
     }
 
-    protected static function booted()
+    public function hasRekomendasi()
     {
-        static::deleting(function ($apl) {
-            $apl->cleanupFiles();
-        });
+        return $this->rekomendasiLsp()->exists();
+    }
+    /**
+     * Approve APL 01 after admin review
+     */
+    public function approveByAdmin($adminId, $notes = null)
+    {
+        return $this->update([
+            'status' => 'approved',
+            'reviewed_by' => $adminId,
+            'reviewed_at' => now(),
+            'completed_at' => now(),
+            'notes' => $notes,
+        ]);
+    }
+
+    /**
+     * Reject APL 01 and reopen for editing
+     */
+    public function rejectAndReopen($adminId, $notes)
+    {
+        return $this->update([
+            'status' => 'open',
+            'reviewed_by' => $adminId,
+            'reviewed_at' => now(),
+            'completed_at' => null,
+            'notes' => $notes,
+        ]);
+    }
+
+    public function isCompleted()
+    {
+        return !is_null($this->completed_at) && $this->status === 'approved';
+    }
+
+    /**
+     * Check if both APL 01 and APL 02 are completed
+     */
+    public function canShowDelegasi()
+    {
+        $apl01Completed = $this->isCompleted();
+
+        $apl02Completed = $this->apl02 && $this->apl02->status === 'approved' && !is_null($this->apl02->completed_at);
+
+        return $apl01Completed && $apl02Completed;
+    }
+
+    /**
+     * Get completion status with details
+     */
+    public function getCompletionStatus()
+    {
+        return [
+            'apl01' => [
+                'completed' => $this->isCompleted(),
+                'completed_at' => $this->completed_at,
+                'status' => $this->status,
+            ],
+            'apl02' => [
+                'completed' => $this->apl02 && $this->apl02->status === 'approved' && !is_null($this->apl02->completed_at),
+                'completed_at' => $this->apl02?->completed_at,
+                'status' => $this->apl02?->status,
+            ],
+            'can_delegasi' => $this->canShowDelegasi(),
+        ];
     }
 
     /* ===================== RELATIONSHIPS ===================== */
@@ -66,6 +108,10 @@ class Apl01Pendaftaran extends Model
     public function selectedRequirementTemplate()
     {
         return $this->belongsTo(RequirementTemplate::class, 'selected_requirement_template_id');
+    }
+    public function tukRequest()
+    {
+        return $this->hasOne(TukRequest::class, 'apl01_id');
     }
 
     public function user()
@@ -83,7 +129,12 @@ class Apl01Pendaftaran extends Model
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
-    // Region relationships - PERBAIKAN: Pastikan relasi menggunakan field yang benar
+    public function delegasi()
+    {
+        return $this->hasOne(DelegasiPersonilAsesmen::class, 'apl01_id');
+    }
+
+    // Keep existing regional relationships...
     public function kotaRumah()
     {
         return $this->belongsTo(RegionKab::class, 'kota_rumah', 'id');
@@ -104,50 +155,296 @@ class Apl01Pendaftaran extends Model
         return $this->belongsTo(RegionProv::class, 'provinsi_kantor', 'id');
     }
 
-    // PERBAIKAN: Tambahkan alias untuk backward compatibility
-    public function provinceRumah()
-    {
-        return $this->provinsiRumah();
-    }
-
-    public function provinceKantor()
-    {
-        return $this->provinsiKantor();
-    }
-
     public function lembagaPelatihan()
     {
         return $this->belongsTo(LembagaPelatihan::class, 'training_provider');
     }
 
-    /* ===================== SCOPES ===================== */
-
-    public function scopeByUser($query, $userId)
+    public function apl02()
     {
-        return $query->where('user_id', $userId);
+        return $this->hasOne(Apl02::class, 'apl_01_id');
     }
 
-    public function scopeByScheme($query, $schemeId)
+    /* ===================== FILE STORAGE METHODS ===================== */
+
+    /**
+     * Store requirement file with organized folder structure
+     */
+    public function storeRequirementFile($file, $requirementItemId)
     {
-        return $query->where('certification_scheme_id', $schemeId);
+        try {
+            // Load required relationships if not already loaded
+            if (!$this->user || !$this->certificationScheme) {
+                $this->load(['user', 'certificationScheme']);
+            }
+
+            $originalName = $file->getClientOriginalName();
+            $extension = $file->getClientOriginalExtension();
+            $fileName = time() . '_' . Str::random(10) . '.' . $extension;
+
+            // Create organized folder structure: year/month/scheme-code/user-name/apl01
+            $year = date('Y');
+            $month = date('m');
+            $schemeCode = Str::slug($this->certificationScheme->code_1 ?? 'no-scheme');
+            $userName = Str::slug($this->user->name ?? 'user-' . $this->user_id);
+
+            $folderPath = "apl01-files/{$year}/{$month}/{$schemeCode}/{$userName}";
+
+            // Store file menggunakan Storage facade
+            $storedPath = Storage::disk('public')->putFileAs($folderPath, $file, $fileName);
+
+            if (!$storedPath) {
+                throw new \Exception('Failed to store file');
+            }
+
+            // Update requirement answers dengan path yang benar
+            $this->setRequirementItemAnswer($requirementItemId, $storedPath);
+            $this->save();
+
+            return $storedPath;
+        } catch (\Exception $e) {
+            throw new \Exception('Error storing requirement file: ' . $e->getMessage());
+        }
     }
 
-    public function scopeByStatus($query, $status)
+    /**
+     * Store signature with organized folder structure
+     */
+    public function storeSignature($signatureData, $type = 'asesi')
     {
-        return $query->where('status', $status);
+        try {
+            // Load user if not already loaded
+            if (!$this->user) {
+                $this->load('user');
+            }
+
+            // Validate signature data
+            if (!preg_match('/^data:image\/(\w+);base64,/', $signatureData, $matches)) {
+                throw new \Exception('Invalid signature format');
+            }
+
+            // Decode base64 signature
+            $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $signatureData);
+            $base64Data = str_replace(' ', '+', $base64Data);
+            $decodedData = base64_decode($base64Data);
+
+            if (!$decodedData) {
+                throw new \Exception('Invalid signature data');
+            }
+
+            $fileName = $type . '_signature_' . time() . '.png';
+
+            // Create organized folder structure
+            $year = date('Y');
+            $month = date('m');
+            $schemeCode = $this->certificationScheme ? Str::slug($this->certificationScheme->code_1) : 'no-scheme';
+            $userName = Str::slug($this->user->name ?? 'user-' . $this->user_id);
+
+            $folderPath = "apl01-signatures/{$year}/{$month}/{$schemeCode}/{$userName}";
+            $filePath = $folderPath . '/' . $fileName;
+
+            // Ensure directory exists
+            Storage::disk('public')->makeDirectory($folderPath);
+
+            // Store signature
+            $stored = Storage::disk('public')->put($filePath, $decodedData);
+
+            if (!$stored) {
+                throw new \Exception('Failed to store signature');
+            }
+
+            return $filePath;
+        } catch (\Exception $e) {
+            throw new \Exception('Error storing signature: ' . $e->getMessage());
+        }
+    }
+    /**
+     * Enhanced sign by asesi with proper file storage
+     */
+    public function signByAsesi($signatureData)
+    {
+        try {
+            $signaturePath = $this->storeSignature($signatureData, 'asesi');
+
+            return $this->update([
+                'tanda_tangan_asesi' => $signaturePath,
+                'tanggal_tanda_tangan_asesi' => now(),
+            ]);
+        } catch (\Exception $e) {
+            // Fallback: simpan sebagai base64 jika gagal store ke file
+            \Log::warning('Failed to store signature file, using base64 fallback: ' . $e->getMessage());
+
+            return $this->update([
+                'tanda_tangan_asesi' => $signatureData,
+                'tanggal_tanda_tangan_asesi' => now(),
+            ]);
+        }
     }
 
-    public function scopeSubmitted($query)
+    /**
+     * Enhanced sign by asesor with proper file storage
+     */
+    public function signByAsesor($signatureData, $asesorName)
     {
-        return $query->whereIn('status', ['submitted', 'review', 'reviewed', 'approved', 'rejected']);
+        try {
+            $signaturePath = $this->storeSignature($signatureData, 'asesor');
+
+            return $this->update([
+                'tanda_tangan_asesor' => $signaturePath,
+                'tanggal_tanda_tangan_asesor' => now(),
+                'nama_asesor' => $asesorName,
+            ]);
+        } catch (\Exception $e) {
+            // Fallback: simpan sebagai base64 jika gagal store ke file
+            \Log::warning('Failed to store asesor signature file, using base64 fallback: ' . $e->getMessage());
+
+            return $this->update([
+                'tanda_tangan_asesor' => $signatureData,
+                'tanggal_tanda_tangan_asesor' => now(),
+                'nama_asesor' => $asesorName,
+            ]);
+        }
     }
 
-    public function scopeDraft($query)
+    /**
+     * Get signature URL
+     */
+    public function getSignatureUrl($type = 'asesi')
     {
-        return $query->where('status', 'draft');
+        $signatureField = 'tanda_tangan_' . $type;
+        $signaturePath = $this->$signatureField;
+
+        if (!$signaturePath) {
+            return null;
+        }
+
+        // Handle base64 signature (langsung return jika masih format base64)
+        if (str_starts_with($signaturePath, 'data:image/')) {
+            return $signaturePath;
+        }
+
+        // Handle file path signature - cek apakah file exists
+        if (Storage::disk('public')->exists($signaturePath)) {
+            // Return path saja tanpa 'storage/' prefix dan tanpa full URL
+            return $signaturePath;
+        }
+
+        // Log untuk debugging
+        \Log::warning("Signature file not found: {$signaturePath}");
+
+        return null;
     }
 
-    /* ===================== ACCESSORS ===================== */
+    /* ===================== FILE MANAGEMENT METHODS ===================== */
+
+    public function getRequirementItemAnswer($itemId)
+    {
+        $answers = $this->requirement_answers ?? [];
+        return $answers[$itemId] ?? null;
+    }
+
+    public function setRequirementItemAnswer($itemId, $value)
+    {
+        $answers = $this->requirement_answers ?? [];
+        $answers[$itemId] = $value;
+        $this->requirement_answers = $answers;
+        return $this;
+    }
+
+    public function hasRequirementFile($itemId)
+    {
+        $answer = $this->getRequirementItemAnswer($itemId);
+        return $answer && is_string($answer) && Storage::disk('public')->exists($answer);
+    }
+
+    public function getRequirementFileUrl($itemId)
+    {
+        $answer = $this->getRequirementItemAnswer($itemId);
+
+        if ($answer && is_string($answer)) {
+            $exists = Storage::disk('public')->exists($answer);
+            if ($exists) {
+                return Storage::url($answer); // -> otomatis "storage/apl01-files/..."
+            }
+        }
+
+        return null;
+    }
+    public function getRequirementFilePath($itemId)
+    {
+        $answer = $this->getRequirementItemAnswer($itemId);
+        return $answer && is_string($answer) ? storage_path('app/public/' . $answer) : null;
+    }
+
+    public function getRequirementFileName($itemId)
+    {
+        $answer = $this->getRequirementItemAnswer($itemId);
+        if ($answer && is_string($answer)) {
+            return basename($answer);
+        }
+        return null;
+    }
+
+    public function deleteRequirementFile($itemId)
+    {
+        $answer = $this->getRequirementItemAnswer($itemId);
+        if ($answer && Storage::disk('public')->exists($answer)) {
+            Storage::disk('public')->delete($answer);
+            $this->setRequirementItemAnswer($itemId, null);
+            $this->save();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Cleanup all files associated with this APL01
+     */
+    private function cleanupFiles()
+    {
+        // Clean up requirement files
+        if ($this->requirement_answers) {
+            foreach ($this->requirement_answers as $itemId => $answer) {
+                if (is_string($answer) && Storage::disk('public')->exists($answer)) {
+                    Storage::disk('public')->delete($answer);
+                }
+            }
+        }
+
+        // Clean up signatures
+        if ($this->tanda_tangan_asesi && Storage::disk('public')->exists($this->tanda_tangan_asesi)) {
+            Storage::disk('public')->delete($this->tanda_tangan_asesi);
+        }
+
+        if ($this->tanda_tangan_asesor && Storage::disk('public')->exists($this->tanda_tangan_asesor)) {
+            Storage::disk('public')->delete($this->tanda_tangan_asesor);
+        }
+    }
+
+    /* ===================== LIFECYCLE HOOKS ===================== */
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->nomor_apl_01)) {
+                if (class_exists('App\Models\NumberSequence')) {
+                    $model->nomor_apl_01 = \App\Models\NumberSequence::generate('apl_01_pendaftaran');
+                }
+            }
+        });
+    }
+
+    protected static function booted()
+    {
+        static::deleting(function ($apl) {
+            $apl->cleanupFiles();
+        });
+    }
+
+    /* ===================== EXISTING METHODS - KEEP AS IS ===================== */
+    // Keep all existing methods from the original model...
 
     public function getStatusTextAttribute()
     {
@@ -174,54 +471,6 @@ class Apl01Pendaftaran extends Model
         };
     }
 
-    public function getJenisKelaminTextAttribute()
-    {
-        return match ($this->jenis_kelamin) {
-            'L' => 'Laki-laki',
-            'P' => 'Perempuan',
-            default => '-',
-        };
-    }
-
-    public function getTanggalLahirFormattedAttribute()
-    {
-        if (!$this->tanggal_lahir) {
-            return '-';
-        }
-
-        // Handle string date
-        if (is_string($this->tanggal_lahir)) {
-            try {
-                return Carbon::parse($this->tanggal_lahir)->format('d/m/Y');
-            } catch (\Exception $e) {
-                return '-';
-            }
-        }
-
-        // Handle Carbon instance
-        if ($this->tanggal_lahir instanceof Carbon) {
-            return $this->tanggal_lahir->format('d/m/Y');
-        }
-
-        return '-';
-    }
-
-    public function getKategoriPesertaTextAttribute()
-    {
-        return $this->kategori_peserta === 'individu' ? 'Individu / Mandiri' : 'Training Provider';
-    }
-
-    public function getAplikasiYangDigunakanTextAttribute()
-    {
-        if (!$this->aplikasi_yang_digunakan) {
-            return '-';
-        }
-
-        return is_array($this->aplikasi_yang_digunakan) 
-            ? implode(', ', $this->aplikasi_yang_digunakan) 
-            : $this->aplikasi_yang_digunakan;
-    }
-
     public function getIsEditableAttribute()
     {
         return in_array($this->status, ['draft', 'rejected', 'open']);
@@ -232,31 +481,85 @@ class Apl01Pendaftaran extends Model
         return $this->status === 'draft' && $this->isComplete();
     }
 
-    public function getCanDeleteAttribute()
+    public function isComplete()
     {
-        return $this->status === 'draft';
-    }
+        $requiredFields = ['nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'alamat_rumah', 'kota_rumah', 'provinsi_rumah', 'no_hp', 'email', 'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 'nama_tempat_kerja', 'kategori_pekerjaan'];
 
-    // PERBAIKAN: Fix method getSelectedUnitsCountAttribute - harus cek relasi yang benar
-    public function getSelectedUnitsCountAttribute()
-    {
-        // Cek apakah ada relasi dengan certification scheme dan unit kompetensi
-        if ($this->certificationScheme && $this->certificationScheme->activeUnitKompetensis) {
-            return $this->certificationScheme->activeUnitKompetensis->count();
+        foreach ($requiredFields as $field) {
+            if (empty($this->$field)) {
+                return false;
+            }
         }
-        return 0;
+
+        if ($this->hasTemplateRequirements()) {
+            $selectedTemplate = $this->selected_requirement_template_id;
+            if (!$selectedTemplate || !$this->isTemplateRequirementComplete($selectedTemplate)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    public function getLembagaPelatihanNamaAttribute()
+    public function isTemplateRequirementComplete($templateId = null)
     {
-        return $this->lembagaPelatihan->nama ?? ($this->training_provider ? 'Lembaga tidak ditemukan' : null);
+        $templateId = $templateId ?? $this->selected_requirement_template_id;
+
+        if (!$templateId) {
+            return false;
+        }
+
+        if (!$this->certificationScheme) {
+            $this->load('certificationScheme.requirementTemplates.activeItems');
+        }
+
+        if (!$this->certificationScheme) {
+            return false;
+        }
+
+        $template = $this->certificationScheme->requirementTemplates->find($templateId);
+        if (!$template?->activeItems) {
+            return true;
+        }
+
+        $answers = $this->requirement_answers ?? [];
+
+        foreach ($template->activeItems as $item) {
+            if (!$item->is_required) {
+                continue;
+            }
+
+            $answer = $answers[$item->id] ?? null;
+
+            if (empty($answer)) {
+                return false;
+            }
+
+            // Validate file upload items
+            if ($item->type === 'file_upload' && is_string($answer)) {
+                if (!Storage::disk('public')->exists($answer)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
-    /* ===================== STATUS MANAGEMENT ===================== */
+    private function hasTemplateRequirements()
+    {
+        if (!$this->certificationScheme) {
+            $this->load('certificationScheme.requirementTemplates');
+        }
+
+        return $this->certificationScheme?->requirementTemplates?->count() > 0;
+    }
+
+    /* ===================== STATUS MANAGEMENT METHODS ===================== */
 
     public function submit()
     {
-        if (!$this->canSubmit) {
+        if (!$this->can_submit) {
             return false;
         }
 
@@ -286,10 +589,48 @@ class Apl01Pendaftaran extends Model
         ]);
     }
 
+    /* ===================== HELPER METHODS ===================== */
+
+    /**
+     * Get storage statistics for this APL01
+     */
+    public function getStorageStats()
+    {
+        $totalSize = 0;
+        $fileCount = 0;
+
+        // Count requirement files
+        if ($this->requirement_answers) {
+            foreach ($this->requirement_answers as $answer) {
+                if (is_string($answer) && Storage::disk('public')->exists($answer)) {
+                    $totalSize += Storage::disk('public')->size($answer);
+                    $fileCount++;
+                }
+            }
+        }
+
+        // Count signature files
+        if ($this->tanda_tangan_asesi && Storage::disk('public')->exists($this->tanda_tangan_asesi)) {
+            $totalSize += Storage::disk('public')->size($this->tanda_tangan_asesi);
+            $fileCount++;
+        }
+
+        if ($this->tanda_tangan_asesor && Storage::disk('public')->exists($this->tanda_tangan_asesor)) {
+            $totalSize += Storage::disk('public')->size($this->tanda_tangan_asesor);
+            $fileCount++;
+        }
+
+        return [
+            'file_count' => $fileCount,
+            'total_size' => $totalSize,
+            'total_size_formatted' => $this->formatFileSize($totalSize),
+        ];
+    }
+
     public function setUnderReview($reviewedBy, $notes = null)
     {
         return $this->update([
-            'status' => 'reviewed',
+            'status' => 'review',
             'reviewed_at' => now(),
             'reviewed_by' => $reviewedBy,
             'notes' => $notes,
@@ -306,518 +647,299 @@ class Apl01Pendaftaran extends Model
         ]);
     }
 
-    /* ===================== DATA POPULATION ===================== */
+    /* ===================== ENHANCED FILE HANDLING METHODS ===================== */
 
-    public function fillFromProfile($profile)
+    /**
+     * Get all requirement files with metadata
+     */
+    public function getRequirementFiles()
     {
-        if (!$profile) {
-            return $this;
+        $files = [];
+        if (!$this->requirement_answers) {
+            return $files;
         }
 
-        $profileFields = [
-            'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 
-            'kebangsaan', 'alamat_rumah', 'no_telp_rumah', 'kota_rumah', 'provinsi_rumah', 
-            'kode_pos', 'no_hp', 'email', 'pendidikan_terakhir', 'nama_sekolah_terakhir', 
-            'jabatan', 'nama_tempat_kerja', 'kategori_pekerjaan', 'nama_jalan_kantor', 
-            'kota_kantor', 'provinsi_kantor', 'kode_pos_kantor', 'negara_kantor', 'no_telp_kantor'
-        ];
-
-        $fillData = [];
-        foreach ($profileFields as $field) {
-            if (isset($profile->$field)) {
-                $fillData[$field] = $profile->$field;
+        foreach ($this->requirement_answers as $itemId => $filePath) {
+            if ($this->hasRequirementFile($itemId)) {
+                $requirementItem = \App\Models\RequirementItem::find($itemId);
+                $files[] = [
+                    'item_id' => $itemId,
+                    'item_name' => $requirementItem ? $requirementItem->document_name : "Dokumen {$itemId}",
+                    'file_path' => $filePath,
+                    'file_url' => $this->getRequirementFileUrl($itemId),
+                    'file_name' => $this->getRequirementFileName($itemId),
+                    'file_size' => $this->getRequirementFileSize($itemId),
+                    'file_extension' => pathinfo($filePath, PATHINFO_EXTENSION),
+                ];
             }
         }
 
-        $this->fill($fillData);
-        return $this;
-    }
-
-    /* ===================== REQUIREMENT MANAGEMENT ===================== */
-
-    public function getRequirementAnswer($requirementId)
-    {
-        return $this->requirement_answers[$requirementId] ?? null;
-    }
-
-    public function getRequirementItemAnswer($itemId)
-    {
-        $answers = $this->requirement_answers ?? [];
-        return $answers[$itemId] ?? null;
-    }
-
-    public function setRequirementItemAnswer($itemId, $value)
-    {
-        $answers = $this->requirement_answers ?? [];
-        $answers[$itemId] = $value;
-        $this->requirement_answers = $answers;
-        return $this;
-    }
-
-    public function getRequirementResponses()
-    {
-        // Alias untuk konsistensi
-        return $this->requirement_answers ?? [];
-    }
-
-    public function getSelectedRequirementTemplate()
-    {
-        return $this->selected_requirement_template_id;
-    }
-
-    public function setSelectedRequirementTemplate($templateId)
-    {
-        $this->selected_requirement_template_id = $templateId;
-        return $this;
-    }
-
-    /* ===================== FILE MANAGEMENT ===================== */
-
-    public function hasRequirementFile($itemId)
-    {
-        $answer = $this->getRequirementItemAnswer($itemId);
-        return $answer && is_string($answer) && Storage::disk('public')->exists($answer);
-    }
-
-    public function getRequirementFileUrl($itemId)
-    {
-        $answer = $this->getRequirementItemAnswer($itemId);
-        if ($answer && is_string($answer) && Storage::disk('public')->exists($answer)) {
-            return Storage::url($answer);
-        }
-        return null;
-    }
-
-    public function getRequirementFileName($itemId)
-    {
-        $answer = $this->getRequirementItemAnswer($itemId);
-        if ($answer && is_string($answer)) {
-            return basename($answer);
-        }
-        return null;
-    }
-
-    public function deleteRequirementFile($itemId)
-    {
-        $answer = $this->getRequirementItemAnswer($itemId);
-        if ($answer && Storage::disk('public')->exists($answer)) {
-            Storage::disk('public')->delete($answer);
-            $this->setRequirementItemAnswer($itemId, null);
-            return true;
-        }
-        return false;
-    }
-
-    private function cleanupFiles()
-    {
-        if ($this->requirement_answers) {
-            foreach ($this->requirement_answers as $itemId => $answer) {
-                if (is_string($answer) && Storage::disk('public')->exists($answer)) {
-                    Storage::disk('public')->delete($answer);
-                }
-            }
-        }
-    }
-
-    /* ===================== DIGITAL SIGNATURE ===================== */
-
-    public function signByAsesi($signatureData)
-    {
-        return $this->update([
-            'tanda_tangan_asesi' => $signatureData,
-            'tanggal_tanda_tangan_asesi' => now(),
-        ]);
-    }
-
-    public function signByAsesor($signatureData, $asesorName)
-    {
-        return $this->update([
-            'tanda_tangan_asesor' => $signatureData,
-            'tanggal_tanda_tangan_asesor' => now(),
-            'nama_asesor' => $asesorName,
-        ]);
-    }
-
-    public function getHasTandaTanganAsesiAttribute()
-    {
-        return !empty($this->tanda_tangan_asesi);
-    }
-
-    public function getHasTandaTanganAsesorAttribute()
-    {
-        return !empty($this->tanda_tangan_asesor);
-    }
-
-    /* ===================== UNIT KOMPETENSI MANAGEMENT - PERBAIKAN ===================== */
-
-    // PERBAIKAN: Method ini perlu diperbaiki karena tidak ada field selected_units di fillable
-    public function getSelectedUnitsInfo()
-    {
-        // Karena semua unit dalam skema otomatis dipilih, return semua active units
-        if ($this->certificationScheme) {
-            return $this->certificationScheme->activeUnitKompetensis ?? collect();
-        }
-        return collect();
-    }
-
-    public function getSelectedUnitsWithInfo()
-    {
-        // Return semua unit aktif dari skema sertifikasi
-        if ($this->certificationScheme) {
-            return $this->certificationScheme->activeUnitKompetensis ?? collect();
-        }
-        return collect();
-    }
-
-    /* ===================== TEMPLATE REQUIREMENT VALIDATION - PERBAIKAN ===================== */
-
-    public function getTemplateRequirementResponses($templateId)
-    {
-        $allResponses = $this->requirement_answers ?? [];
-        $templateResponses = [];
-
-        // PERBAIKAN: Pastikan relasi ter-load dengan benar
-        if (!$this->certificationScheme) {
-            // Lazy load jika belum ter-load
-            $this->load('certificationScheme.requirementTemplates.activeItems');
-        }
-
-        if (!$this->certificationScheme?->requirementTemplates) {
-            return $templateResponses;
-        }
-
-        $template = $this->certificationScheme->requirementTemplates->find($templateId);
-        if ($template?->activeItems) {
-            foreach ($template->activeItems as $item) {
-                if (isset($allResponses[$item->id])) {
-                    $templateResponses[$item->id] = $allResponses[$item->id];
-                }
-            }
-        }
-
-        return $templateResponses;
-    }
-
-    public function isTemplateRequirementComplete($templateId = null)
-    {
-        $templateId = $templateId ?? $this->selected_requirement_template_id;
-
-        if (!$templateId) {
-            return false;
-        }
-
-        // PERBAIKAN: Pastikan relasi ter-load
-        if (!$this->certificationScheme) {
-            $this->load('certificationScheme.requirementTemplates.activeItems');
-        }
-
-        if (!$this->certificationScheme) {
-            return false;
-        }
-
-        $template = $this->certificationScheme->requirementTemplates->find($templateId);
-        if (!$template?->activeItems) {
-            return true; // Jika tidak ada item, anggap complete
-        }
-
-        $answers = $this->requirement_answers ?? [];
-
-        foreach ($template->activeItems as $item) {
-            if (!$item->is_required) {
-                continue; // Skip item yang tidak wajib
-            }
-
-            $answer = $answers[$item->id] ?? null;
-
-            // Cek jika item kosong
-            if (empty($answer)) {
-                return false;
-            }
-
-            // Validasi khusus untuk file upload
-            if ($item->type === 'file_upload' && is_string($answer)) {
-                if (!Storage::disk('public')->exists($answer)) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    public function getTemplateCompletionPercentage($templateId = null)
-    {
-        $templateId = $templateId ?? $this->selected_requirement_template_id;
-
-        if (!$templateId) {
-            return 0;
-        }
-
-        // PERBAIKAN: Pastikan relasi ter-load
-        if (!$this->certificationScheme) {
-            $this->load('certificationScheme.requirementTemplates.activeItems');
-        }
-
-        if (!$this->certificationScheme) {
-            return 0;
-        }
-
-        $template = $this->certificationScheme->requirementTemplates->find($templateId);
-        if (!$template?->activeItems) {
-            return 100; // Jika tidak ada item, anggap 100%
-        }
-
-        $totalItems = $template->activeItems->count();
-        if ($totalItems === 0) {
-            return 100;
-        }
-
-        $completedItems = 0;
-        $answers = $this->requirement_answers ?? [];
-
-        foreach ($template->activeItems as $item) {
-            $answer = $answers[$item->id] ?? null;
-
-            if (!empty($answer)) {
-                // Cek file upload dengan benar
-                if ($item->type === 'file_upload' && is_string($answer)) {
-                    if (Storage::disk('public')->exists($answer)) {
-                        $completedItems++;
-                    }
-                } else {
-                    $completedItems++;
-                }
-            }
-        }
-
-        return round(($completedItems / $totalItems) * 100);
-    }
-
-    public function getTemplateRequirementSummary($templateId = null)
-    {
-        $templateId = $templateId ?? $this->selected_requirement_template_id;
-
-        if (!$templateId) {
-            return null;
-        }
-
-        // PERBAIKAN: Pastikan relasi ter-load
-        if (!$this->certificationScheme) {
-            $this->load('certificationScheme.requirementTemplates.activeItems');
-        }
-
-        if (!$this->certificationScheme) {
-            return null;
-        }
-
-        $template = $this->certificationScheme->requirementTemplates->find($templateId);
-        if (!$template) {
-            return null;
-        }
-
-        $totalItems = $template->activeItems?->count() ?? 0;
-        $requiredItems = $template->activeItems?->where('is_required', true)->count() ?? 0;
-        $completedItems = 0;
-        $completedRequiredItems = 0;
-
-        $answers = $this->requirement_answers ?? [];
-
-        if ($template->activeItems) {
-            foreach ($template->activeItems as $item) {
-                $answer = $answers[$item->id] ?? null;
-
-                $isCompleted = false;
-                if (!empty($answer)) {
-                    // Validasi file dengan benar
-                    if ($item->type === 'file_upload' && is_string($answer)) {
-                        $isCompleted = Storage::disk('public')->exists($answer);
-                    } else {
-                        $isCompleted = true;
-                    }
-                }
-
-                if ($isCompleted) {
-                    $completedItems++;
-                    if ($item->is_required) {
-                        $completedRequiredItems++;
-                    }
-                }
-            }
-        }
-
-        return [
-            'template_name' => $template->name,
-            'total_items' => $totalItems,
-            'required_items' => $requiredItems,
-            'completed_items' => $completedItems,
-            'completed_required_items' => $completedRequiredItems,
-            'completion_percentage' => $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 100,
-            'required_completion_percentage' => $requiredItems > 0 ? round(($completedRequiredItems / $requiredItems) * 100) : 100,
-            'is_complete' => $completedRequiredItems === $requiredItems,
-        ];
-    }
-
-    /* ===================== FORM COMPLETION VALIDATION - PERBAIKAN ===================== */
-
-    public function isComplete()
-    {
-        // Check basic required fields
-        $requiredFields = [
-            'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 
-            'alamat_rumah', 'kota_rumah', 'provinsi_rumah', 'no_hp', 'email', 
-            'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 
-            'nama_tempat_kerja', 'kategori_pekerjaan'
-        ];
-
-        foreach ($requiredFields as $field) {
-            if (empty($this->$field)) {
-                return false;
-            }
-        }
-
-        // Check template requirements if applicable
-        if ($this->hasTemplateRequirements()) {
-            $selectedTemplate = $this->selected_requirement_template_id;
-            if (!$selectedTemplate || !$this->isTemplateRequirementComplete($selectedTemplate)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private function hasTemplateRequirements()
-    {
-        // PERBAIKAN: Pastikan relasi ter-load
-        if (!$this->certificationScheme) {
-            $this->load('certificationScheme.requirementTemplates');
-        }
-        
-        return $this->certificationScheme?->requirementTemplates?->count() > 0;
-    }
-
-    /* ===================== UTILITY METHODS ===================== */
-
-    public function generateAplNumber()
-    {
-        if (!empty($this->nomor_apl_01)) {
-            return $this->nomor_apl_01;
-        }
-
-        $year = date('Y');
-        $month = date('m');
-        $lastNumber = static::whereNotNull('nomor_apl_01')
-            ->whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->count();
-
-        $number = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-        $this->nomor_apl_01 = "APL01/{$year}/{$month}/{$number}";
-        $this->save();
-
-        return $this->nomor_apl_01;
-    }
-
-    /* ===================== HELPER METHODS - PERBAIKAN ===================== */
-
-    public function getCompletionPercentage()
-    {
-        $totalSections = 3; // Basic info, template requirements, signature
-        $completedSections = 0;
-
-        // 1. Basic info completion
-        $requiredFields = [
-            'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 
-            'alamat_rumah', 'kota_rumah', 'provinsi_rumah', 'no_hp', 'email', 
-            'pendidikan_terakhir', 'nama_sekolah_terakhir', 'jabatan', 
-            'nama_tempat_kerja', 'kategori_pekerjaan'
-        ];
-
-        $completedFields = 0;
-        foreach ($requiredFields as $field) {
-            if (!empty($this->$field)) {
-                $completedFields++;
-            }
-        }
-        
-        if ($completedFields === count($requiredFields)) {
-            $completedSections++;
-        }
-
-        // 2. Template requirements completion
-        if ($this->hasTemplateRequirements()) {
-            if ($this->selected_requirement_template_id && $this->isTemplateRequirementComplete()) {
-                $completedSections++;
-            }
-        } else {
-            $completedSections++; // No template requirements = completed
-        }
-
-        // 3. Signature completion (only for submitted forms)
-        if ($this->status === 'draft' || !empty($this->tanda_tangan_asesi)) {
-            $completedSections++;
-        }
-
-        return round(($completedSections / $totalSections) * 100);
-    }
-
-    public function getSummaryData()
-    {
-        return [
-            'basic_info' => [
-                'nama_lengkap' => $this->nama_lengkap,
-                'nik' => $this->nik,
-                'email' => $this->email,
-                'no_hp' => $this->no_hp,
-            ],
-            'address' => [
-                'alamat_rumah' => $this->alamat_rumah,
-                'kota_rumah' => $this->kota_rumah,
-                'provinsi_rumah' => $this->provinsi_rumah,
-            ],
-            'employment' => [
-                'nama_tempat_kerja' => $this->nama_tempat_kerja,
-                'jabatan' => $this->jabatan,
-                'kategori_pekerjaan' => $this->kategori_pekerjaan,
-            ],
-            'education' => [
-                'pendidikan_terakhir' => $this->pendidikan_terakhir,
-                'nama_sekolah_terakhir' => $this->nama_sekolah_terakhir,
-            ],
-            'assessment' => [
-                'tujuan_asesmen' => $this->tujuan_asesmen,
-                'kategori_peserta' => $this->kategori_peserta_text,
-                'selected_units_count' => $this->selected_units_count,
-            ],
-            'status' => [
-                'status' => $this->status_text,
-                'submitted_at' => $this->submitted_at ? $this->formatDatetime($this->submitted_at) : null,
-                'completion_percentage' => $this->getCompletionPercentage(),
-            ],
-        ];
+        return $files;
     }
 
     /**
-     * Helper method to format datetime safely
+     * Get requirement file size
      */
-    private function formatDatetime($datetime)
+    public function getRequirementFileSize($itemId)
     {
-        if (!$datetime) {
-            return null;
+        $answer = $this->getRequirementItemAnswer($itemId);
+        if ($answer && is_string($answer) && Storage::disk('public')->exists($answer)) {
+            return Storage::disk('public')->size($answer);
         }
+        return 0;
+    }
 
-        if (is_string($datetime)) {
-            try {
-                return Carbon::parse($datetime)->format('d/m/Y H:i');
-            } catch (\Exception $e) {
-                return null;
+    /**
+     * Format file size for display
+     */
+    public function getRequirementFileSizeFormatted($itemId)
+    {
+        $size = $this->getRequirementFileSize($itemId);
+        return $this->formatFileSize($size);
+    }
+
+    /**
+     * Check if signature exists and get its info
+     */
+    public function getSignatureInfo($type = 'asesi')
+    {
+        $signatureField = 'tanda_tangan_' . $type;
+        $dateField = 'tanggal_tanda_tangan_' . $type;
+
+        $signaturePath = $this->$signatureField;
+        $signatureDate = $this->$dateField;
+
+        // Cek apakah base64
+        $isBase64 = $signaturePath && str_starts_with($signaturePath, 'data:image/');
+        $fileExists = false;
+        $path = null;
+
+        if ($isBase64) {
+            $path = $signaturePath; // Return base64 as is
+        } elseif ($signaturePath) {
+            $fileExists = Storage::disk('public')->exists($signaturePath);
+            if ($fileExists) {
+                // Return only the path, tidak include 'storage/' atau full URL
+                $path = $signaturePath;
             }
         }
 
-        if ($datetime instanceof Carbon) {
-            return $datetime->format('d/m/Y H:i');
+        return [
+            'exists' => !empty($signaturePath),
+            'path' => $path,
+            'date' => $signatureDate,
+            'formatted_date' => $signatureDate ? $signatureDate->format('d F Y H:i') : null,
+            'is_base64' => $isBase64,
+            'file_exists' => $fileExists,
+        ];
+    }
+
+    public function getRequirementFilesSafe()
+    {
+        $files = [];
+
+        if (!$this->requirement_answers || !is_array($this->requirement_answers)) {
+            return $files;
         }
 
-        return null;
+        foreach ($this->requirement_answers as $itemId => $filePath) {
+            try {
+                // Skip empty paths
+                if (!$filePath) {
+                    continue;
+                }
+
+                // Get requirement item
+                $requirementItem = RequirementItem::find($itemId);
+                $itemName = $requirementItem ? $requirementItem->document_name : "Dokumen {$itemId}";
+
+                // Check file existence safely
+                $fileExists = false;
+                $fileSize = 0;
+                $fileUrl = null;
+
+                if (Storage::disk('public')->exists($filePath)) {
+                    $fileExists = true;
+                    $fileSize = Storage::disk('public')->size($filePath);
+                    $fileUrl = Storage::url($filePath);
+                }
+
+                $files[] = [
+                    'item_id' => $itemId,
+                    'item_name' => $itemName,
+                    'file_path' => $filePath,
+                    'file_url' => $fileUrl,
+                    'file_exists' => $fileExists,
+                    'file_size' => $fileSize,
+                    'file_size_formatted' => $fileSize > 0 ? $this->formatFileSize($fileSize) : '0 KB',
+                    'file_extension' => pathinfo($filePath, PATHINFO_EXTENSION) ?: 'unknown',
+                    'error' => !$fileExists ? 'File tidak ditemukan' : null,
+                ];
+            } catch (\Exception $e) {
+                Log::warning("Error processing requirement file {$itemId}: " . $e->getMessage());
+
+                $files[] = [
+                    'item_id' => $itemId,
+                    'item_name' => "Dokumen {$itemId}",
+                    'file_path' => $filePath,
+                    'file_url' => null,
+                    'file_exists' => false,
+                    'file_size' => 0,
+                    'file_size_formatted' => '0 KB',
+                    'file_extension' => 'unknown',
+                    'error' => 'Error: ' . $e->getMessage(),
+                ];
+            }
+        }
+
+        return $files;
+    }
+
+    /**
+     * Check if requirement file exists safely
+     */
+    public function hasRequirementFileSafe($itemId)
+    {
+        try {
+            if (!$this->requirement_answers || !is_array($this->requirement_answers)) {
+                return false;
+            }
+
+            $filePath = $this->requirement_answers[$itemId] ?? null;
+            if (!$filePath) {
+                return false;
+            }
+
+            return Storage::disk('public')->exists($filePath);
+        } catch (\Exception $e) {
+            Log::warning("Error checking requirement file {$itemId}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get requirement file size safely
+     */
+    public function getRequirementFileSizeFormattedSafe($itemId)
+    {
+        try {
+            if (!$this->hasRequirementFileSafe($itemId)) {
+                return '0 KB';
+            }
+
+            $filePath = $this->requirement_answers[$itemId];
+            $size = Storage::disk('public')->size($filePath);
+            return $this->formatFileSize($size);
+        } catch (\Exception $e) {
+            Log::warning("Error getting file size for requirement {$itemId}: " . $e->getMessage());
+            return '0 KB';
+        }
+    }
+
+    /**
+     * Format file size
+     */
+    private function formatFileSize($bytes)
+    {
+        if ($bytes >= 1073741824) {
+            return number_format($bytes / 1073741824, 2) . ' GB';
+        } elseif ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 2) . ' MB';
+        } elseif ($bytes >= 1024) {
+            return number_format($bytes / 1024, 2) . ' KB';
+        } elseif ($bytes > 1) {
+            return $bytes . ' bytes';
+        } elseif ($bytes == 1) {
+            return $bytes . ' byte';
+        } else {
+            return '0 KB';
+        }
+    }
+
+    public function isTukSewaktu()
+    {
+        return $this->tuk === 'Sewaktu';
+    }
+
+    /**
+     * Check if TUK is Mandiri (need PDF embed)
+     */
+    public function isTukMandiri()
+    {
+        return $this->tuk === 'mandiri';
+    }
+
+    /**
+     * Check if TUK form is needed
+     */
+    public function needsTukForm()
+    {
+        return $this->isTukSewaktu();
+    }
+
+    /**
+     * Check if TUK form is completed
+     */
+    public function isTukFormCompleted()
+    {
+        if (!$this->needsTukForm()) {
+            return true; // Mandiri doesn't need form
+        }
+
+        return $this->tukRequest && $this->tukRequest->isComplete();
+    }
+
+    /**
+     * Get TUK status for display
+     */
+    public function getTukStatusAttribute()
+    {
+        if ($this->isTukMandiri()) {
+            return 'mandiri';
+        }
+
+        if (!$this->tukRequest) {
+            return 'form_needed';
+        }
+
+        if (!$this->tukRequest->isComplete()) {
+            return 'form_incomplete';
+        }
+
+        if ($this->tukRequest->hasRecommendation()) {
+            return 'recommended';
+        }
+
+        return 'pending_recommendation';
+    }
+
+    /**
+     * Get TUK status text for display
+     */
+    public function getTukStatusTextAttribute()
+    {
+        return match ($this->tuk_status) {
+            'mandiri' => 'TUK Mandiri',
+            'form_needed' => 'Perlu Mengisi Form TUK',
+            'form_incomplete' => 'Form TUK Belum Lengkap',
+            'pending_recommendation' => 'Menunggu Rekomendasi Admin',
+            'recommended' => 'Sudah Direkomendasi Admin',
+            default => 'Status TUK Tidak Diketahui',
+        };
+    }
+
+    /**
+     * Get TUK status badge color
+     */
+    public function getTukStatusColorAttribute()
+    {
+        return match ($this->tuk_status) {
+            'mandiri' => 'success',
+            'form_needed' => 'warning',
+            'form_incomplete' => 'danger',
+            'pending_recommendation' => 'info',
+            'recommended' => 'success',
+            default => 'secondary',
+        };
     }
 }

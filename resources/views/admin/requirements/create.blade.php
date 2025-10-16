@@ -168,7 +168,7 @@
                                 <h6 class="mb-0 fw-bold">
                                     <i class="bi bi-list-check me-2"></i>Daftar Persyaratan
                                 </h6>
-                                <button type="button" class="btn btn-primary-custom btn-sm" id="addItem">
+                                <button type="button" class=" btn-primary-custom btn-sm" id="addItem">
                                     <i class="bi bi-plus-circle me-2"></i>Tambah Persyaratan
                                 </button>
                             </div>
@@ -257,7 +257,7 @@
                             <a href="{{ route('admin.requirements.index') }}" class="btn btn-outline-secondary d-flex justify-content-center align-items-center">
                                 <i class="bi bi-x-circle me-2"></i>Batal
                             </a>
-                            <button type="submit" class="btn btn-primary-custom text-light">
+                            <button type="submit" class=" btn-primary-custom text-light">
                                 <i class="bi bi-check-circle me-2"></i>Simpan Template
                             </button>
                         </div>

@@ -6,9 +6,7 @@
 
     <!-- Main Content Card -->
     <div class="main-card">
-        <!-- Card Header -->
-        <div class="card-header-custom">
-            @if (session('success'))
+        @if (session('success'))
                 <div class="alert-success-custom">
                     <i class="bi bi-check-circle-fill me-2"></i>
                     {{ session('success') }}
@@ -21,11 +19,14 @@
                     {{ session('error') }}
                 </div>
             @endif
+        <!-- Card Header -->
+        <div class="card-header-custom">
+            
 
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="mb-1 text-dark fw-bold">
-                        <i class="bi bi-people me-2"></i>Monitoring Profile
+                        <i class="bi bi-clipboard-data me-2"></i>Monitoring Profile
                     </h5>
                     <p class="mb-0 text-muted">Monitoring pengguna yang telah mengisi data Profile</p>
                 </div>

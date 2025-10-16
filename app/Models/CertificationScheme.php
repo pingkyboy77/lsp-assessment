@@ -10,13 +10,13 @@ class CertificationScheme extends Model
     use HasFactory;
 
     protected $fillable = [
-        'nama',
-        'code_1',
+        'nama', 
+        'code_1', 
         'code_2', 
-        'fee_tanda_tangan',
-        'skema_ing',
-        'jenjang',
-        'is_active',
+        'fee_tanda_tangan', 
+        'skema_ing', 
+        'jenjang', 
+        'is_active', 
         'requirement_template_id'
     ];
 
@@ -38,11 +38,11 @@ class CertificationScheme extends Model
     }
 
     public function requirementTemplates()
-{
-    return $this->belongsToMany(RequirementTemplate::class, 'certification_scheme_requirements')
-                ->withPivot('is_active', 'sort_order')
-                ->orderBy('certification_scheme_requirements.sort_order');
-}
+    {
+        return $this->belongsToMany(RequirementTemplate::class, 'certification_scheme_requirements')
+            ->withPivot('is_active', 'sort_order')
+            ->orderBy('certification_scheme_requirements.sort_order');
+    }
 
     public function allRequirementTemplates()
     {
@@ -59,9 +59,7 @@ class CertificationScheme extends Model
 
     public function activeKelompokKerjas()
     {
-        return $this->hasMany(KelompokKerja::class)
-            ->where('is_active', true)
-            ->orderBy('sort_order');
+        return $this->hasMany(KelompokKerja::class)->where('is_active', true)->orderBy('sort_order');
     }
 
     public function units()
@@ -76,15 +74,13 @@ class CertificationScheme extends Model
 
     public function activeUnits()
     {
-        return $this->hasMany(UnitKompetensi::class)
-            ->where('is_active', true)
-            ->orderBy('sort_order');
+        return $this->hasMany(UnitKompetensi::class)->where('is_active', true)->orderBy('sort_order');
     }
 
     public function activeUnitKompetensis()
-{
-    return $this->hasMany(UnitKompetensi::class)->where('is_active', true);
-}
+    {
+        return $this->hasMany(UnitKompetensi::class)->where('is_active', true);
+    }
 
     public function elemenKompetensis()
     {
@@ -95,18 +91,27 @@ class CertificationScheme extends Model
     {
         return $this->hasManyThrough(
             KriteriaKerja::class, 
-            ElemenKompetensi::class,
-            'unit_kompetensi_id',
-            'elemen_kompetensi_id',
-            'id',
+            ElemenKompetensi::class, 
+            'unit_kompetensi_id', 
+            'elemen_kompetensi_id', 
+            'id', 
             'id'
         )->join('unit_kompetensis', 'elemen_kompetensis.unit_kompetensi_id', '=', 'unit_kompetensis.id')
          ->where('unit_kompetensis.certification_scheme_id', $this->id);
     }
 
-    public function buktiPortofolios()
+    /**
+     * Portfolio files melalui UnitKompetensi
+     */
+    public function portfolioFiles()
     {
-        return $this->hasManyThrough(BuktiPortofolio::class, KelompokKerja::class);
+        return $this->hasManyThrough(PortfolioFile::class, UnitKompetensi::class);
+    }
+
+    public function activePortfolioFiles()
+    {
+        return $this->hasManyThrough(PortfolioFile::class, UnitKompetensi::class)
+            ->where('portfolio_files.is_active', true);
     }
 
     /* ===================== SCOPES ===================== */
@@ -128,15 +133,13 @@ class CertificationScheme extends Model
 
     public function scopeComplete($query)
     {
-        return $query->whereHas('units')
-            ->whereHas('kelompokKerjas');
+        return $query->whereHas('units')->whereHas('kelompokKerjas');
     }
 
     public function scopeIncomplete($query)
     {
         return $query->where(function ($q) {
-            $q->doesntHave('units')
-              ->orDoesntHave('kelompokKerjas');
+            $q->doesntHave('units')->orDoesntHave('kelompokKerjas');
         });
     }
 
@@ -149,9 +152,7 @@ class CertificationScheme extends Model
 
     public function getFormattedFeeAttribute()
     {
-        return $this->fee_tanda_tangan 
-            ? 'Rp ' . number_format($this->fee_tanda_tangan, 0, ',', '.') 
-            : '-';
+        return $this->fee_tanda_tangan ? 'Rp ' . number_format($this->fee_tanda_tangan, 0, ',', '.') : '-';
     }
 
     public function getStatusTextAttribute()
@@ -168,9 +169,9 @@ class CertificationScheme extends Model
     {
         return match ($this->jenjang) {
             'Utama' => 'danger',
-            'Madya' => 'warning', 
+            'Madya' => 'warning',
             'Menengah' => 'info',
-            default => 'secondary'
+            default => 'secondary',
         };
     }
 
@@ -206,9 +207,24 @@ class CertificationScheme extends Model
         return $this->kriteriaKerjas()->count();
     }
 
-    public function getTotalBuktiPortofolioCountAttribute()
+    public function getTotalPortfolioFileCountAttribute()
     {
-        return $this->buktiPortofolios()->count();
+        return $this->portfolioFiles()->count();
+    }
+
+    public function getTotalActivePortfolioFileCountAttribute()
+    {
+        return $this->activePortfolioFiles()->count();
+    }
+
+    public function getTotalPortfolioFileSizeAttribute()
+    {
+        return $this->portfolioFiles()->sum('file_size');
+    }
+
+    public function getTotalActivePortfolioFileSizeAttribute()
+    {
+        return $this->activePortfolioFiles()->sum('file_size');
     }
 
     public function getStatsAttribute()
@@ -220,7 +236,10 @@ class CertificationScheme extends Model
             'kelompoks_active' => $this->active_kelompok_kerja_count,
             'elements_total' => $this->total_elemen_count,
             'criterias_total' => $this->total_kriteria_count,
-            'portfolios_total' => $this->total_bukti_portofolio_count,
+            'portfolio_files_total' => $this->total_portfolio_file_count,
+            'portfolio_files_active' => $this->total_active_portfolio_file_count,
+            'total_file_size' => $this->total_portfolio_file_size,
+            'total_active_file_size' => $this->total_active_portfolio_file_size,
         ];
     }
 
@@ -239,7 +258,7 @@ class CertificationScheme extends Model
             'has_units' => $this->unit_kompetensi_count > 0,
             'has_elements' => $this->total_elemen_count > 0,
             'has_kelompoks' => $this->kelompok_kerja_count > 0,
-            'has_portfolios' => $this->total_bukti_portofolio_count > 0,
+            'has_portfolio_files' => $this->total_portfolio_file_count > 0,
         ];
 
         $completed = array_filter($criteria);
@@ -255,7 +274,7 @@ class CertificationScheme extends Model
             $this->completion_percentage >= 75 => 'Hampir Lengkap',
             $this->completion_percentage >= 50 => 'Sebagian',
             $this->completion_percentage >= 25 => 'Dasar',
-            default => 'Belum Dimulai'
+            default => 'Belum Dimulai',
         };
     }
 
@@ -266,8 +285,80 @@ class CertificationScheme extends Model
             $this->completion_percentage >= 75 => 'info',
             $this->completion_percentage >= 50 => 'warning',
             $this->completion_percentage >= 25 => 'secondary',
-            default => 'danger'
+            default => 'danger',
         };
+    }
+
+    /* ===================== PORTFOLIO FILE MANAGEMENT ===================== */
+
+    /**
+     * Get all portfolio files for this certification scheme
+     */
+    public function getAllPortfolioFiles()
+    {
+        return PortfolioFile::getByCertificationScheme($this->id);
+    }
+
+    /**
+     * Get portfolio file statistics by unit
+     */
+    public function getPortfolioFileStatsByUnit()
+    {
+        $stats = [];
+
+        foreach ($this->units as $unit) {
+            $stats[$unit->id] = [
+                'unit_name' => $unit->judul_unit,
+                'unit_code' => $unit->kode_unit,
+                'portfolio_stats' => $unit->getPortfolioFileStats(),
+            ];
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Get comprehensive portfolio file statistics
+     */
+    public function getPortfolioFileStats()
+    {
+        return PortfolioFile::getStatsForScheme($this->id);
+    }
+
+    /**
+     * Get portfolio files grouped by type
+     */
+    public function getPortfolioFilesByType()
+    {
+        $files = $this->portfolioFiles()->active()->with('unitKompetensi:id,kode_unit,judul_unit')->get();
+
+        return [
+            'images' => $files->filter(fn($file) => $file->is_image)->values(),
+            'documents' => $files->filter(fn($file) => $file->is_document)->values(),
+            'others' => $files->filter(fn($file) => !$file->is_image && !$file->is_document)->values(),
+        ];
+    }
+
+    /**
+     * Check storage quota for scheme
+     */
+    public function checkStorageQuota($maxSize = null)
+    {
+        $maxSize = $maxSize ?? 1024 * 1024 * 1024; // 1GB default per scheme
+        $currentSize = $this->total_portfolio_file_size;
+
+        return [
+            'current_size' => $currentSize,
+            'max_size' => $maxSize,
+            'remaining' => $maxSize - $currentSize,
+            'percentage_used' => round(($currentSize / $maxSize) * 100, 2),
+            'over_limit' => $currentSize > $maxSize,
+            'formatted' => [
+                'current_size' => PortfolioFile::formatFileSize($currentSize),
+                'max_size' => PortfolioFile::formatFileSize($maxSize),
+                'remaining' => PortfolioFile::formatFileSize($maxSize - $currentSize),
+            ],
+        ];
     }
 
     /* ===================== REQUIREMENT MANAGEMENT ===================== */
@@ -280,28 +371,28 @@ class CertificationScheme extends Model
     public function getRequirementsAttribute()
     {
         $requirements = collect();
-        
+
         if ($this->requirementTemplate?->activeItems) {
             $requirements = $requirements->merge($this->requirementTemplate->activeItems);
         }
-        
+
         foreach ($this->requirementTemplates as $template) {
             if ($template->activeItems) {
                 $requirements = $requirements->merge($template->activeItems);
             }
         }
-        
+
         return $requirements->unique('id');
     }
 
     public function getAllActiveTemplatesAttribute()
     {
         $templates = collect();
-        
+
         if ($this->requirementTemplate) {
             $templates->push($this->requirementTemplate);
         }
-        
+
         return $templates->merge($this->requirementTemplates)->unique('id');
     }
 
@@ -314,15 +405,15 @@ class CertificationScheme extends Model
     public function getTotalRequiredDocumentsAttribute()
     {
         $total = 0;
-        
+
         if ($this->requirementTemplate) {
             $total += $this->calculateTemplateRequiredDocs($this->requirementTemplate);
         }
-        
+
         foreach ($this->requirementTemplates as $template) {
             $total += $this->calculateTemplateRequiredDocs($template);
         }
-        
+
         return $total;
     }
 
@@ -332,47 +423,66 @@ class CertificationScheme extends Model
             'all_required' => $template->activeItems?->count() ?? 0,
             'choose_one' => 1,
             'choose_min' => $template->min_required ?? 1,
-            default => 0
+            default => 0,
         };
     }
 
-    /* ===================== TEMPLATE MANAGEMENT ===================== */
+    /* ===================== TEMPLATE SYNC METHODS ===================== */
 
-    public function syncRequirementTemplates(array $ids)
+    public function syncRequirementTemplates(array $templateIds)
     {
         $syncData = [];
-        foreach ($ids as $index => $id) {
-            $syncData[$id] = [
-                'sort_order' => $index + 1,
+        
+        foreach ($templateIds as $index => $templateId) {
+            $syncData[$templateId] = [
                 'is_active' => true,
+                'sort_order' => $index + 1,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
         }
-        
+
         return $this->requirementTemplates()->sync($syncData);
     }
 
-    public function addRequirementTemplate($id, $sortOrder = null)
+    public function addRequirementTemplate($templateId, $sortOrder = null)
     {
-        if ($this->requirementTemplates()->where('requirement_template_id', $id)->exists()) {
-            return false;
+        if ($this->requirementTemplates()->where('requirement_template_id', $templateId)->exists()) {
+            return false; // Already exists
         }
 
-        $maxSortOrder = $this->allRequirementTemplates()->max('sort_order') ?? 0;
-        $sortOrder = $sortOrder ?? $maxSortOrder + 1;
-        
-        return $this->requirementTemplates()->attach($id, [
+        $sortOrder = $sortOrder ?? ($this->getMaxRequirementTemplateSortOrder() + 1);
+
+        $this->requirementTemplates()->attach($templateId, [
             'sort_order' => $sortOrder,
             'is_active' => true,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        return true;
     }
 
-    public function removeRequirementTemplate($id)
+    public function removeRequirementTemplate($templateId)
     {
-        return $this->requirementTemplates()->detach($id);
+        return $this->requirementTemplates()->detach($templateId) > 0;
+    }
+
+    public function reorderRequirementTemplates(array $templateIds)
+    {
+        foreach ($templateIds as $index => $templateId) {
+            $this->requirementTemplates()->updateExistingPivot($templateId, [
+                'sort_order' => $index + 1,
+                'updated_at' => now(),
+            ]);
+        }
+
+        return true;
+    }
+
+    private function getMaxRequirementTemplateSortOrder()
+    {
+        return $this->requirementTemplates()->max('certification_scheme_requirements.sort_order') ?? 0;
     }
 
     /* ===================== VALIDATION METHODS ===================== */
@@ -401,156 +511,81 @@ class CertificationScheme extends Model
             $issues[] = 'Belum ada elemen kompetensi';
         }
 
+        if ($this->total_portfolio_file_count === 0) {
+            $issues[] = 'Belum ada portfolio file';
+        }
+
         return [
             'is_valid' => empty($issues),
             'issues' => $issues,
-            'completion_score' => $this->completion_percentage
+            'completion_score' => $this->completion_percentage,
         ];
     }
 
-    /* ===================== EXPORT/IMPORT METHODS ===================== */
+    /* ===================== BULK OPERATIONS ===================== */
 
-    public function exportData()
+    /**
+     * Bulk activate portfolio files for this scheme
+     */
+    public function bulkActivatePortfolioFiles(array $fileIds = [])
     {
-        return [
-            'basic_info' => [
-                'nama' => $this->nama,
-                'code_1' => $this->code_1,
-                'code_2' => $this->code_2,
-                'jenjang' => $this->jenjang,
-                'fee_tanda_tangan' => $this->fee_tanda_tangan,
-            ],
-            'statistics' => $this->stats,
-            'requirements' => $this->getAllActiveTemplatesAttribute()->map(function($template) {
-                return [
-                    'id' => $template->id,
-                    'name' => $template->name,
-                    'items_count' => $template->activeItems?->count() ?? 0
-                ];
-            }),
-            'units' => $this->activeUnits->map(function($unit) {
-                return [
-                    'id' => $unit->id,
-                    'kode_unit' => $unit->kode_unit,
-                    'judul_unit' => $unit->judul_unit,
-                    'elements_count' => $unit->elemenKompetensis?->count() ?? 0
-                ];
-            })
-        ];
+        $query = $this->portfolioFiles();
+
+        if (!empty($fileIds)) {
+            $query->whereIn('portfolio_files.id', $fileIds);
+        }
+
+        return $query->update(['is_active' => true]);
     }
 
-    public function generateReport()
+    /**
+     * Bulk deactivate portfolio files for this scheme
+     */
+    public function bulkDeactivatePortfolioFiles(array $fileIds = [])
     {
-        $validation = $this->validateCompleteness();
-        
-        return [
-            'scheme_info' => [
-                'nama' => $this->nama,
-                'code' => $this->code_1,
-                'jenjang' => $this->jenjang,
-                'status' => $this->status_text,
-                'completion' => $this->completion_percentage,
-                'progress_status' => $this->progress_status
-            ],
-            'content_summary' => [
-                'units_count' => $this->unit_kompetensi_count,
-                'active_units_count' => $this->active_unit_kompetensi_count,
-                'elements_count' => $this->total_elemen_count,
-                'criteria_count' => $this->total_kriteria_count,
-                'kelompok_count' => $this->kelompok_kerja_count,
-                'portfolio_count' => $this->total_bukti_portofolio_count
-            ],
-            'requirements_summary' => [
-                'templates_count' => $this->requirement_templates_count,
-                'total_required_docs' => $this->total_required_documents,
-                'has_legacy_template' => !empty($this->requirement_template_id)
-            ],
-            'validation' => $validation,
-            'recommendations' => $this->generateRecommendations($validation)
-        ];
+        $query = $this->portfolioFiles();
+
+        if (!empty($fileIds)) {
+            $query->whereIn('portfolio_files.id', $fileIds);
+        }
+
+        return $query->update(['is_active' => false]);
     }
 
-    private function generateRecommendations($validation)
+    /**
+     * Cleanup inactive portfolio files
+     */
+    public function cleanupInactivePortfolioFiles()
     {
-        $recommendations = [];
+        $deletedCount = 0;
+        $inactiveFiles = $this->portfolioFiles()->where('is_active', false)->get();
 
-        if (!$validation['is_valid']) {
-            $recommendations[] = 'Lengkapi semua komponen yang masih kurang untuk mengaktifkan skema';
+        foreach ($inactiveFiles as $file) {
+            try {
+                $file->deleteFile();
+                $deletedCount++;
+            } catch (\Exception $e) {
+                \Log::warning("Failed to delete portfolio file {$file->id}: " . $e->getMessage());
+            }
         }
 
-        if ($this->active_unit_kompetensi_count < 3) {
-            $recommendations[] = 'Pertimbangkan menambah unit kompetensi untuk skema yang lebih komprehensif';
-        }
-
-        if ($this->requirement_templates_count === 0) {
-            $recommendations[] = 'Tambahkan template persyaratan untuk mempermudah proses pendaftaran';
-        }
-
-        if ($this->total_bukti_portofolio_count === 0) {
-            $recommendations[] = 'Tambahkan bukti portofolio untuk setiap kelompok kerja';
-        }
-
-        return $recommendations;
+        return $deletedCount;
     }
 
-    /* ===================== TEMPLATE SYNC METHODS ===================== */
+    /* ===================== KELOMPOK KERJA MANAGEMENT ===================== */
 
-    public function syncRequirementTemplatesWithOrder(array $templateData)
+    public function reorderKelompokKerja(array $kelompokIds)
     {
-        $syncData = [];
-        
-        foreach ($templateData as $data) {
-            $templateId = $data['id'];
-            $syncData[$templateId] = [
-                'sort_order' => $data['sort_order'] ?? 1,
-                'is_active' => $data['is_active'] ?? true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
+        foreach ($kelompokIds as $index => $kelompokId) {
+            $this->kelompokKerjas()
+                ->where('id', $kelompokId)
+                ->update([
+                    'sort_order' => $index + 1,
+                    'updated_at' => now(),
+                ]);
         }
-        
-        return $this->requirementTemplates()->sync($syncData);
-    }
 
-    public function reorderRequirementTemplates(array $orderedIds)
-    {
-        foreach ($orderedIds as $index => $id) {
-            $this->requirementTemplates()->updateExistingPivot($id, [
-                'sort_order' => $index + 1,
-                'updated_at' => now()
-            ]);
-        }
-        
         return true;
-    }
-
-    public function toggleRequirementTemplate($id, $isActive)
-    {
-        return $this->requirementTemplates()->updateExistingPivot($id, [
-            'is_active' => $isActive,
-            'updated_at' => now()
-        ]);
-    }
-
-    /* ===================== QUERY OPTIMIZATION ===================== */
-
-    public function loadCompleteData()
-    {
-        return $this->load([
-            'units.elemenKompetensis.kriteriaKerjas',
-            'kelompokKerjas.buktiPortofolios',
-            'requirementTemplates.activeItems',
-            'field'
-        ]);
-    }
-
-    public function loadBasicData()
-    {
-        return $this->load([
-            'units:id,certification_scheme_id,kode_unit,judul_unit,is_active',
-            'kelompokKerjas:id,certification_scheme_id,nama,is_active', 
-            'requirementTemplates:id,name,requirement_type'
-        ]);
     }
 
     /* ===================== UTILITY METHODS ===================== */
@@ -580,13 +615,13 @@ class CertificationScheme extends Model
     {
         $baseCode = $this->code_1;
         $counter = 1;
-        
+
         do {
             $newCode = $baseCode . '-' . str_pad($counter, 2, '0', STR_PAD_LEFT);
             $exists = static::where('code_1', $newCode)->exists();
             $counter++;
         } while ($exists);
-        
+
         return $newCode;
     }
 
@@ -600,8 +635,19 @@ class CertificationScheme extends Model
         if (!$this->is_complete) {
             return false;
         }
-        
+
         return $this->update(['is_active' => true]);
+    }
+
+    public function canBeDeleted()
+    {
+        return !$this->hasRelatedSubmissions();
+    }
+
+    private function hasRelatedSubmissions()
+    {
+        // Check for actual submissions/applications in your system
+        return false;
     }
 
     /* ===================== SEARCH AND FILTERING ===================== */
@@ -614,25 +660,39 @@ class CertificationScheme extends Model
 
         return $query->where(function ($q) use ($search) {
             $q->where('nama', 'like', "%{$search}%")
-              ->orWhere('code_1', 'like', "%{$search}%")
-              ->orWhere('jenjang', 'like', "%{$search}%");
+                ->orWhere('code_1', 'like', "%{$search}%")
+                ->orWhere('jenjang', 'like', "%{$search}%");
         });
     }
 
     public function scopeWithCounts($query)
     {
         return $query->withCount([
-            'units',
-            'activeUnits',
+            'units', 
+            'activeUnits', 
             'kelompokKerjas', 
-            'activeKelompokKerjas',
-            'elemenKompetensis',
-            'kriteriaKerjas',
-            'buktiPortofolios'
+            'activeKelompokKerjas', 
+            'elemenKompetensis', 
+            'kriteriaKerjas', 
+            'portfolioFiles', 
+            'activePortfolioFiles'
         ]);
     }
 
-    /* ===================== BULK OPERATIONS ===================== */
+    public function scopeWithStorageInfo($query)
+    {
+        return $query->addSelect([
+            'total_file_size' => PortfolioFile::select(\DB::raw('COALESCE(SUM(file_size), 0)'))
+                ->join('unit_kompetensis', 'portfolio_files.unit_kompetensi_id', '=', 'unit_kompetensis.id')
+                ->whereColumn('unit_kompetensis.certification_scheme_id', 'certification_schemes.id'),
+            'active_file_size' => PortfolioFile::select(\DB::raw('COALESCE(SUM(file_size), 0)'))
+                ->join('unit_kompetensis', 'portfolio_files.unit_kompetensi_id', '=', 'unit_kompetensis.id')
+                ->whereColumn('unit_kompetensis.certification_scheme_id', 'certification_schemes.id')
+                ->where('portfolio_files.is_active', true),
+        ]);
+    }
+
+    /* ===================== STATIC HELPER METHODS ===================== */
 
     public static function bulkActivate(array $ids)
     {
@@ -641,7 +701,7 @@ class CertificationScheme extends Model
             ->update(['is_active' => true]);
     }
 
-    public static function bulkDeactivate(array $ids) 
+    public static function bulkDeactivate(array $ids)
     {
         return static::whereIn('id', $ids)
             ->where('is_active', true)
@@ -658,19 +718,115 @@ class CertificationScheme extends Model
             ->groupBy('jenjang');
     }
 
-    /* ===================== HELPER METHODS ===================== */
+    /* ===================== EXPORT/SUMMARY METHODS ===================== */
 
-    public function canBeDeleted()
+    public function exportData()
     {
-        // Check if scheme has any APL submissions
-        return !$this->hasRelatedSubmissions();
+        return [
+            'basic_info' => [
+                'nama' => $this->nama,
+                'code_1' => $this->code_1,
+                'code_2' => $this->code_2,
+                'jenjang' => $this->jenjang,
+                'fee_tanda_tangan' => $this->fee_tanda_tangan,
+            ],
+            'statistics' => $this->stats,
+            'storage_info' => [
+                'total_files' => $this->total_portfolio_file_count,
+                'active_files' => $this->total_active_portfolio_file_count,
+                'total_size' => $this->total_portfolio_file_size,
+                'total_size_formatted' => PortfolioFile::formatFileSize($this->total_portfolio_file_size),
+            ],
+            'requirements' => $this->getAllActiveTemplatesAttribute()->map(function ($template) {
+                return [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'items_count' => $template->activeItems?->count() ?? 0,
+                ];
+            }),
+            'units' => $this->activeUnits->map(function ($unit) {
+                return [
+                    'id' => $unit->id,
+                    'kode_unit' => $unit->kode_unit,
+                    'judul_unit' => $unit->judul_unit,
+                    'elements_count' => $unit->elemenKompetensis?->count() ?? 0,
+                    'portfolio_files_count' => $unit->portfolioFiles?->count() ?? 0,
+                    'portfolio_size' => $unit->portfolio_file_size ?? 0,
+                    'portfolio_size_formatted' => PortfolioFile::formatFileSize($unit->portfolio_file_size ?? 0),
+                ];
+            }),
+        ];
     }
 
-    private function hasRelatedSubmissions()
+    public function generateReport()
     {
-        return Apl01Pendaftaran::where('certification_scheme_id', $this->id)
-            ->whereIn('status', ['submitted', 'approved'])
-            ->exists();
+        $validation = $this->validateCompleteness();
+        $storageQuota = $this->checkStorageQuota();
+
+        return [
+            'scheme_info' => [
+                'nama' => $this->nama,
+                'code' => $this->code_1,
+                'jenjang' => $this->jenjang,
+                'status' => $this->status_text,
+                'completion' => $this->completion_percentage,
+                'progress_status' => $this->progress_status,
+            ],
+            'content_summary' => [
+                'units_count' => $this->unit_kompetensi_count,
+                'active_units_count' => $this->active_unit_kompetensi_count,
+                'elements_count' => $this->total_elemen_count,
+                'criteria_count' => $this->total_kriteria_count,
+                'kelompok_count' => $this->kelompok_kerja_count,
+                'portfolio_files_count' => $this->total_portfolio_file_count,
+                'active_portfolio_files_count' => $this->total_active_portfolio_file_count,
+            ],
+            'storage_summary' => [
+                'total_size' => $this->total_portfolio_file_size,
+                'total_size_formatted' => PortfolioFile::formatFileSize($this->total_portfolio_file_size),
+                'active_size' => $this->total_active_portfolio_file_size,
+                'active_size_formatted' => PortfolioFile::formatFileSize($this->total_active_portfolio_file_size),
+                'quota_info' => $storageQuota,
+            ],
+            'requirements_summary' => [
+                'templates_count' => $this->requirement_templates_count ?? 0,
+                'total_required_docs' => $this->total_required_documents ?? 0,
+                'has_legacy_template' => !empty($this->requirement_template_id),
+            ],
+            'validation' => $validation,
+            'recommendations' => $this->generateRecommendations($validation, $storageQuota),
+        ];
+    }
+
+    private function generateRecommendations($validation, $storageQuota)
+    {
+        $recommendations = [];
+
+        if (!$validation['is_valid']) {
+            $recommendations[] = 'Lengkapi semua komponen yang masih kurang untuk mengaktifkan skema';
+        }
+
+        if ($this->active_unit_kompetensi_count < 3) {
+            $recommendations[] = 'Pertimbangkan menambah unit kompetensi untuk skema yang lebih komprehensif';
+        }
+
+        if ($this->total_portfolio_file_count === 0) {
+            $recommendations[] = 'Upload portfolio files untuk setiap unit kompetensi';
+        }
+
+        if ($this->total_portfolio_file_count > 0 && $this->total_active_portfolio_file_count === 0) {
+            $recommendations[] = 'Aktifkan portfolio files yang sudah diupload';
+        }
+
+        if ($storageQuota['percentage_used'] > 80) {
+            $recommendations[] = 'Storage hampir penuh, pertimbangkan untuk membersihkan file yang tidak diperlukan';
+        }
+
+        if ($storageQuota['over_limit']) {
+            $recommendations[] = 'Storage melebihi kuota, segera hapus file yang tidak diperlukan';
+        }
+
+        return $recommendations;
     }
 
     public function getSchemeCodeAttribute()
@@ -694,9 +850,15 @@ class CertificationScheme extends Model
             'completion' => $this->completion_percentage,
             'units_count' => $this->unit_kompetensi_count,
             'requirements_count' => $this->requirement_templates_count,
+            'portfolio_files_count' => $this->total_portfolio_file_count,
+            'storage' => [
+                'total_size' => $this->total_portfolio_file_size,
+                'total_size_formatted' => PortfolioFile::formatFileSize($this->total_portfolio_file_size),
+                'file_count' => $this->total_portfolio_file_count,
+            ],
             'is_active' => $this->is_active,
             'created_at' => $this->created_at->format('d/m/Y'),
-            'updated_at' => $this->updated_at->format('d/m/Y H:i')
+            'updated_at' => $this->updated_at->format('d/m/Y H:i'),
         ];
     }
 }

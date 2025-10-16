@@ -5,9 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    @if($userProfile)
-<meta name="user-profile" content="{{ json_encode($userProfile) }}">
-@endif
+    @if (isset($userProfile))
+        <meta name="user-profile" content="{{ json_encode($userProfile) }}">
+    @endif
     <title>LSPPM Assessment Application</title>
     <link rel="icon" href="{{ asset('images/logo-putih-small.png') }}" type="image/png">
     <!-- Bootstrap CSS -->
@@ -22,8 +22,8 @@
 
     <!-- DataTables CSS -->
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" type="text/css"
-        href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+    {{-- <link rel="stylesheet" type="text/css"
+        href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css"> --}}
     <link rel="stylesheet" type="text/css"
         href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/select/1.7.0/css/select.bootstrap5.min.css">
@@ -32,9 +32,10 @@
     <link rel="stylesheet" type="text/css"
         href="https://cdn.datatables.net/searchbuilder/1.6.0/css/searchBuilder.bootstrap5.min.css">
 
-         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+        rel="stylesheet" />
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -137,6 +138,7 @@
             background: rgba(239, 68, 68, 0.1);
             color: #dc2626;
         }
+
         :root {
             --primary-color: #6c757d;
             --primary-dark: #495057;
@@ -151,7 +153,7 @@
             --border-color: #dee2e6;
             --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
             --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-            --sidebar-width: 250px;
+            --sidebar-width: 350px;
             --sidebar-collapsed-width: 80px;
             --topbar-height: 70px;
         }
@@ -527,7 +529,7 @@
             margin-top: 1rem;
         }
 
-        .dataTables_wrapper .dataTables_length,
+        /* .dataTables_wrapper .dataTables_length,
         .dataTables_wrapper .dataTables_filter {
             margin-bottom: 1rem;
         }
@@ -541,7 +543,7 @@
 
         .dataTables_wrapper .dataTables_filter input {
             background-color: var(--card-bg);
-        }
+        } */
 
         .table {
             border-radius: 0.5rem;
@@ -586,7 +588,7 @@
             box-shadow: var(--shadow) !important;
         }
 
-        <style>.page-header {
+        .page-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border-radius: 1rem;
@@ -806,9 +808,7 @@
 
         .dataTables_wrapper .dataTables_paginate .paginate_button {
             border-radius: 0.5rem !important;
-            /* margin: 0 0.25rem; */
             color: black !important;
-            /* border: 2px solid transparent; */
             transition: all 0.3s ease;
         }
 
@@ -1159,16 +1159,18 @@
             border: none;
         }
 
-        .btn-warning-custom {
-            background: #ed8936;
-            color: white;
-        }
+        .btn-outline-warning-custom {
+    border: 1px solid #ed8936;
+    color: #ed8936;
+    background: transparent;
+}
 
-        .btn-warning-custom:hover {
-            background: #dd6b20;
-            color: white;
-            transform: translateY(-2px);
-        }
+.btn-outline-warning-custom:hover {
+    background: #ed8936;
+    color: white;
+    transform: translateY(-2px);
+}
+
 
         .btn-secondary-custom {
             background: #718096;
@@ -1299,7 +1301,8 @@
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- Include Sidebar -->
-    @include('partials.admin-side')
+    {{-- @include('partials.admin-side') --}}
+    @include('components.sidebar')
 
     <!-- Include Topbar -->
     @include('partials.topbar')
@@ -1317,8 +1320,8 @@
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+    {{-- <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script> --}}
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
@@ -1333,12 +1336,14 @@
     <!-- pdfmake for PDF export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-     <!-- Date Range Picker -->
+    <!-- Date Range Picker -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <script>
         // Main Layout JavaScript
         document.addEventListener('DOMContentLoaded', function() {

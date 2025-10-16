@@ -84,8 +84,8 @@
         color: var(--text-primary);
     }
 
-    .badge-created { background: #d4edda; color: #155724; }
-    .badge-updated { background: #d1ecf1; color: #0c5460; }
+    .badge-apl01 { background: #d4edda; color: #155724; }
+    .badge-apl02 { background: #d1ecf1; color: #0c5460; }
     .badge-deleted { background: #f8d7da; color: #721c24; }
     .badge-default { background: var(--sidebar-bg); color: var(--text-secondary); }
 

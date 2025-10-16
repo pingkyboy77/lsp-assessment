@@ -465,110 +465,184 @@
     }
 
     // SIGNATURE PAD
-    function initializeSignaturePad() {
-        const canvas = document.getElementById("signature-canvas");
-        const placeholder = document.getElementById("signature-placeholder");
-        const clearBtn = document.getElementById("clear-signature");
-        const input = document.getElementById("signature-input");
+   function initializeSignaturePad() {
+    const canvas = document.getElementById("signature-canvas");
+    const placeholder = document.getElementById("signature-placeholder");
+    const clearBtn = document.getElementById("clear-signature");
+    const input = document.getElementById("signature-input");
 
-        if (!canvas || typeof SignaturePad === "undefined") {
-            return;
+    if (!canvas || typeof SignaturePad === "undefined") {
+        return;
+    }
+
+    try {
+        const container = canvas.parentElement;
+        const rect = container.getBoundingClientRect();
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+
+        // Set canvas dimensions
+        canvas.width = rect.width * ratio;
+        canvas.height = rect.height * ratio;
+
+        const ctx = canvas.getContext("2d");
+        ctx.scale(ratio, ratio);
+
+        canvas.style.width = rect.width + "px";
+        canvas.style.height = rect.height + "px";
+
+        // Function to force reset canvas context
+        function resetCanvasContext() {
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "rgba(255, 255, 255, 1)";
+            ctx.strokeStyle = "rgba(0, 0, 0, 1)";
+            ctx.lineWidth = 2;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            
+            // Fill background putih
+            ctx.fillRect(0, 0, rect.width, rect.height);
         }
 
-        try {
-            const container = canvas.parentElement;
-            const rect = container.getBoundingClientRect();
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        // Initialize canvas background
+        resetCanvasContext();
 
-            canvas.width = rect.width * ratio;
-            canvas.height = rect.height * ratio;
+        // Destroy existing SignaturePad if exists
+        if (window.signaturePad) {
+            window.signaturePad.clear();
+            window.signaturePad = null;
+        }
 
-            const ctx = canvas.getContext("2d");
-            ctx.scale(ratio, ratio);
-
-            canvas.style.width = rect.width + "px";
-            canvas.style.height = rect.height + "px";
-
-            signaturePad = new SignaturePad(canvas, {
-                backgroundColor: "rgba(255, 255, 255, 1)",
-                penColor: "rgba(0, 0, 0, 1)",
-                minWidth: 1,
-                maxWidth: 3,
-                throttle: 16,
-                minPointDistance: 2,
-                onBegin: function () {
-                    if (placeholder) {
-                        placeholder.classList.add("hidden");
-                    }
-                },
-                onEnd: function () {
-                    if (!signaturePad.isEmpty() && placeholder) {
-                        placeholder.classList.add("hidden");
-                    }
-                    if (input && !signaturePad.isEmpty()) {
-                        try {
-                            const dataURL = signaturePad.toDataURL("image/png");
-                            input.value = dataURL;
-                        } catch (error) {
-                            console.log('Signature save failed:', error);
-                        }
-                    }
-                    updateProgress();
-                },
-            });
-
-            if (clearBtn) {
-                clearBtn.addEventListener("click", function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    if (signaturePad) {
-                        signaturePad.clear();
-                    }
-
-                    if (input) {
-                        input.value = "";
-                    }
-
-                    if (placeholder) {
-                        placeholder.classList.remove("hidden");
-                    }
-
-                    updateProgress();
-                });
-            }
-
-            // Load existing signature
-            if (input && input.value && input.value.startsWith("data:image/")) {
-                const img = new Image();
-                img.onload = function () {
+        // Create new SignaturePad
+        signaturePad = new SignaturePad(canvas, {
+            backgroundColor: "rgba(255, 255, 255, 1)",
+            penColor: "rgba(0, 0, 0, 1)",
+            minWidth: 2,
+            maxWidth: 4,
+            throttle: 16,
+            minPointDistance: 2,
+            onBegin: function () {
+                if (placeholder) {
+                    placeholder.classList.add("hidden");
+                }
+                // Pastikan pen color tetap hitam
+                signaturePad._ctx.strokeStyle = "rgba(0, 0, 0, 1)";
+                signaturePad._ctx.fillStyle = "rgba(0, 0, 0, 1)";
+            },
+            onEnd: function () {
+                if (!signaturePad.isEmpty() && placeholder) {
+                    placeholder.classList.add("hidden");
+                }
+                if (input && !signaturePad.isEmpty()) {
                     try {
-                        ctx.clearRect(0, 0, canvas.width / ratio, canvas.height / ratio);
-                        ctx.drawImage(img, 0, 0, rect.width, rect.height);
-
-                        if (placeholder) {
-                            placeholder.classList.add("hidden");
-                        }
+                        const dataURL = signaturePad.toDataURL("image/png");
+                        input.value = dataURL;
                     } catch (error) {
-                        console.log('Existing signature load failed:', error);
+                        console.log('Signature save failed:', error);
                     }
-                };
-                img.onerror = function () {
-                    console.log('Existing signature image load error');
-                };
-                img.src = input.value;
-            } else {
+                }
+                updateProgress();
+            },
+        });
+
+        // Override SignaturePad methods to ensure consistency
+        const originalClear = signaturePad.clear;
+        signaturePad.clear = function() {
+            originalClear.call(this);
+            resetCanvasContext();
+            
+            // Reset SignaturePad internal properties
+            this._ctx.strokeStyle = "rgba(0, 0, 0, 1)";
+            this._ctx.fillStyle = "rgba(0, 0, 0, 1)";
+        };
+
+        if (clearBtn) {
+            clearBtn.addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (signaturePad) {
+                    signaturePad.clear(); // This will call our overridden clear method
+                }
+
+                if (input) {
+                    input.value = "";
+                }
+
                 if (placeholder) {
                     placeholder.classList.remove("hidden");
                 }
-            }
 
-            window.signaturePad = signaturePad;
-
-        } catch (error) {
-            console.log('Signature pad initialization failed:', error);
+                updateProgress();
+            });
         }
+
+        // Load existing signature
+        if (input && input.value && input.value.startsWith("data:image/")) {
+            const img = new Image();
+            img.onload = function () {
+                try {
+                    // Clear everything first
+                    signaturePad.clear();
+                    
+                    // Reset context
+                    resetCanvasContext();
+                    
+                    // Draw existing image
+                    ctx.drawImage(img, 0, 0, rect.width, rect.height);
+                    
+                    // Force reset SignaturePad context after drawing
+                    setTimeout(() => {
+                        signaturePad._ctx.strokeStyle = "rgba(0, 0, 0, 1)";
+                        signaturePad._ctx.fillStyle = "rgba(0, 0, 0, 1)";
+                        signaturePad._ctx.lineWidth = 2;
+                        signaturePad._ctx.lineCap = "round";
+                        signaturePad._ctx.lineJoin = "round";
+                    }, 100);
+
+                    if (placeholder) {
+                        placeholder.classList.add("hidden");
+                    }
+                } catch (error) {
+                    console.log('Existing signature load failed:', error);
+                    resetCanvasContext();
+                }
+            };
+            img.onerror = function () {
+                console.log('Existing signature image load error');
+                resetCanvasContext();
+            };
+            img.src = input.value;
+        } else {
+            if (placeholder) {
+                placeholder.classList.remove("hidden");
+            }
+        }
+
+        // Force context reset on window resize
+        window.addEventListener('resize', function() {
+            setTimeout(() => {
+                if (signaturePad && signaturePad._ctx) {
+                    signaturePad._ctx.strokeStyle = "rgba(0, 0, 0, 1)";
+                    signaturePad._ctx.fillStyle = "rgba(0, 0, 0, 1)";
+                }
+            }, 100);
+        });
+
+        // Force cursor consistency - GANTI JADI PEN HITAM YANG SAMA KAYAK CSS
+        canvas.addEventListener('mouseenter', function() {
+            this.style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTIgNEwxNCA2TDggMTZINEw2IDEyTDEyIDRaIiBmaWxsPSIjMDAwMDAwIi8+PHBhdGggZD0iTTEyIDRMMTQgNkwxMiA4TDEwIDZMMTIgNFoiIGZpbGw9IiMzMzMzMzMiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjE2IiByPSIxIiBmaWxsPSIjMDAwMDAwIi8+PC9zdmc+") 12 20, crosshair';
+        });
+
+        canvas.addEventListener('mousemove', function() {
+            this.style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTIgNEwxNCA2TDggMTZINEw2IDEyTDEyIDRaIiBmaWxsPSIjMDAwMDAwIi8+PHBhdGggZD0iTTEyIDRMMTQgNkwxMiA4TDEwIDZMMTIgNFoiIGZpbGw9IiMzMzMzMzMiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjE2IiByPSIxIiBmaWxsPSIjMDAwMDAwIi8+PC9zdmc+") 12 20, crosshair';
+        });
+
+        window.signaturePad = signaturePad;
+
+    } catch (error) {
+        console.log('Signature pad initialization failed:', error);
     }
+}
 
     // CONDITIONAL SECTIONS
     function initializeConditionalSections() {

@@ -28,7 +28,7 @@
                     </button>
                     <!-- Add Button -->
                     <a href="{{ route('admin.certification-schemes.create') }}"
-                        class="btn btn-primary-custom btn-sm text-light">
+                        class=" btn-primary-custom btn-sm text-light">
                         <i class="bi bi-plus-circle me-2 text-light"></i>Tambah Skema Sertifikasi
                     </a>
                 </div>
@@ -70,8 +70,8 @@
                     <div class="loading-spinner"></div>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-hover table-bordered" id="schemesTable" style="width: 100%;">
+                {{-- <div class="table-responsive"> --}}
+                    <table class="table table-hover" id="schemesTable" style="width: 100%;">
                         <thead>
                             <tr>
                                 <th style="width: 3%">
@@ -98,7 +98,7 @@
                             </tr>
                         </thead>
                     </table>
-                </div>
+                {{-- </div> --}}
             </div>
         </div>
     </div>
@@ -148,7 +148,7 @@
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="resetFilter">
                         <i class="bi bi-x-circle me-2"></i>Reset
                     </button>
-                    <button type="button" class="btn btn-primary-custom btn-sm text-light" id="applyFilter">
+                    <button type="button" class=" btn-primary-custom btn-sm text-light" id="applyFilter">
                         <i class="bi bi-check-circle me-2"></i>Terapkan Filter
                     </button>
                 </div>

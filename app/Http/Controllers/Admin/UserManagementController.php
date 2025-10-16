@@ -9,6 +9,7 @@ use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Yajra\DataTables\Facades\DataTables;
 
 class UserManagementController extends Controller
@@ -16,28 +17,32 @@ class UserManagementController extends Controller
     public function index(Request $request)
     {
         if ($request->ajax()) {
+            // Eager load relasi: 'roles' dan relasi lembaga (nama relasi: 'lembaga')
             $data = User::with('roles', 'lembaga')->select('users.*');
 
             return DataTables::eloquent($data)
                 ->addIndexColumn()
                 ->addColumn('roles', fn($user) => $user->roles->pluck('name')->implode(', '))
-                ->addColumn('lembaga', fn($user) => $user->lembaga ? (is_iterable($user->lembaga) ? $user->lembaga->pluck('name')->implode(', ') : $user->lembaga->name) : '')
+                // Gunakan nama relasi 'lembaga' dan akses properti 'name'
+                ->addColumn('lembaga', fn($user) => $user->lembaga->name ?? '-')
                 ->addColumn('id_number', fn($user) => $user->id_number ?? '-')
                 ->addColumn('action', function ($row) {
                     $editBtn = '<a href="' . route('admin.users.edit', $row->id) . '" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>';
                     $deleteBtn =
                         '<form action="' .
                         route('admin.users.destroy', $row->id) .
-                        '" method="POST" style="display:inline-block;">
-                    ' .
+                        '" method="POST" style="display:inline-block;" onsubmit="return confirm(\'Anda yakin ingin menghapus user ini?\');">
+                            ' .
                         csrf_field() .
+                        '
+                            ' .
                         method_field('DELETE') .
                         '
-                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm(\'Delete this User?\')"><i class="bi bi-trash"></i></button>
-                </form>';
+                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    </form>';
                     return $editBtn . ' ' . $deleteBtn;
                 })
-                ->rawColumns(['action']) 
+                ->rawColumns(['action'])
                 ->make(true);
         }
 
@@ -47,37 +52,40 @@ class UserManagementController extends Controller
     public function create()
     {
         $roles = Role::pluck('name')->all();
-        $lembagas = LembagaPelatihan::all();
+        $lembagas = LembagaPelatihan::orderBy('name')->get();
         return view('admin.users.create', compact('roles', 'lembagas'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|confirmed|min:6',
+            'password' => 'required|string|confirmed|min:8',
             'roles' => 'required|array',
-            'company' => 'nullable|string|max:255',
-            'id_number' => 'required|string|max:255|unique:users',
-        ]);
+            'id_number' => 'required|string|max:255|unique:users,id_number',
+            // Nama kolom input/request harus 'company' karena kolom DB adalah 'company'
+            'company' => 'nullable|exists:lembaga_pelatihan,id',
+        ];
 
-        // Additional validation based on selected roles
-        $roles = $request->roles ?? [];
-        if (in_array('lembagaPelatihan', $roles)) {
-            $request->validate(['company' => 'required|string|max:255']);
+        // Tambahkan aturan 'required' jika role 'lembagaPelatihan' dipilih.
+        if (in_array('lembagaPelatihan', $request->input('roles', []))) {
+            $rules['company'] = 'required|exists:lembaga_pelatihan,id';
         }
+
+        $validated = $request->validate($rules);
 
         try {
             $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'company' => in_array('lembagaPelatihan', $roles) ? $request->company : null,
-                'id_number' => $request->id_number,
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'id_number' => $validated['id_number'],
+                // Pastikan menggunakan nama kolom DB yang benar: 'company'
+                'company' => $validated['company'] ?? null,
             ]);
 
-            $user->syncRoles($request->roles);
+            $user->syncRoles($validated['roles']);
 
             return redirect()->route('admin.users.index')->with('success', 'User created successfully.');
         } catch (\Exception $e) {
@@ -88,54 +96,43 @@ class UserManagementController extends Controller
 
     public function edit(User $user)
     {
-        $roles = Role::pluck('name', 'name');
-        $lembagas = LembagaPelatihan::all();
-        $userRole = $user->roles->pluck('name')->toArray();
+        $roles = Role::pluck('name')->all();
+        $lembagas = LembagaPelatihan::orderBy('name')->get();
+        $userRoles = $user->roles->pluck('name')->toArray();
 
-        return view('admin.users.edit', compact('user', 'roles', 'userRole', 'lembagas'));
+        return view('admin.users.edit', compact('user', 'roles', 'userRoles', 'lembagas'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, User $user)
     {
-        $user = User::findOrFail($id);
-
-        // Get all available roles
-        $roles = Role::pluck('name')->toArray();
-
-        // Basic validation
         $rules = [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            'id_number' => ['required', 'string', 'max:255', Rule::unique('users')->ignore($user->id)],
             'roles' => 'required|array',
-            'roles.*' => 'in:' . implode(',', $roles),
-            'password' => 'nullable|string|min:6|confirmed',
-            'company' => 'nullable|string|max:255',
-            'id_number' => 'required|string|max:255|unique:users',
+            'password' => 'nullable|string|min:8|confirmed',
+            // Nama kolom input/request harus 'company' karena kolom DB adalah 'company'
+            'company' => 'nullable|exists:lembaga_pelatihan,id',
         ];
 
-        // Additional validation based on selected roles
-        $selectedRoles = $request->roles ?? [];
-        if (in_array('lembagaPelatihan', $selectedRoles)) {
-            $rules['company'] = 'required|string|max:255';
+        if (in_array('lembagaPelatihan', $request->input('roles', []))) {
+            $rules['company'] = 'required|exists:lembaga_pelatihan,id';
         }
 
         $validated = $request->validate($rules);
 
-        // Update data
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->id_number = $validated['id_number'];
 
         if (!empty($validated['password'])) {
-            $user->password = bcrypt($validated['password']);
+            $user->password = Hash::make($validated['password']); // Gunakan Hash::make() alih-alih bcrypt()
         }
 
-        // Save company and no_met based on roles
-        $user->company = in_array('lembagaPelatihan', $selectedRoles) ? $validated['company'] : null;
-
+        // Pastikan menggunakan nama kolom DB yang benar: 'company'
+        $user->company = $validated['company'] ?? null;
         $user->save();
 
-        // Sync roles
         $user->syncRoles($validated['roles']);
 
         return redirect()->route('admin.users.index')->with('success', 'User updated successfully');
@@ -145,10 +142,72 @@ class UserManagementController extends Controller
     {
         try {
             $user->delete();
-            return response()->json(['success' => true]);
+            return back()->with('success', 'User deleted successfully.');
         } catch (\Exception $e) {
-            Log::error('User Delete Error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to delete user.']);
+            Log::error('User Destroy Error: ' . $e->getMessage());
+            return back()->with('error', 'Failed to delete user.');
+        }
+    }
+
+    public function getUsersByRole(Request $request)
+    {
+        try {
+            // Menerapkan prinsip DRY (Don't Repeat Yourself) untuk menghindari duplikasi kode.
+            $rolesToFetch = ['verifikator', 'observer', 'asesor'];
+            $usersByRole = [];
+
+            foreach ($rolesToFetch as $role) {
+                $users = User::role($role)->select('id', 'name', 'email', 'id_number')->where('status', 'active')->orderBy('name', 'asc')->get()->map(
+                    fn($user) => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'id_number' => $user->id_number ?? 'N/A',
+                    ],
+                );
+                $usersByRole[$role] = $users;
+            }
+
+            return response()->json([
+                'success' => true,
+                ...$usersByRole, // Spread operator untuk memasukkan hasil loop ke response
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching users by roles: ' . $e->getMessage());
+            return response()->json(
+                [
+                    'success' => false,
+                    'error' => 'Gagal memuat data pengguna',
+                    'message' => $e->getMessage(),
+                ],
+                500,
+            );
+        }
+    }
+
+    public function getUserDetail($userId)
+    {
+        try {
+            $user = User::select('id', 'name', 'email', 'id_number')->where('id', $userId)->where('status', 'active')->firstOrFail();
+
+            return response()->json([
+                'success' => true,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'id_number' => $user->id_number ?? 'N/A',
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching user detail: ' . $e->getMessage());
+            return response()->json(
+                [
+                    'success' => false,
+                    'error' => 'Pengguna tidak ditemukan',
+                ],
+                404,
+            );
         }
     }
 }

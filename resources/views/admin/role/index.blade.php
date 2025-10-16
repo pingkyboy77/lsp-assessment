@@ -24,7 +24,7 @@
                     <p class="mb-0 text-muted">Manage and organize system roles</p>
                 </div>
                 <div>
-                    <a href="{{ route('admin.roles.create') }}" class="btn btn-primary-custom text-light">
+                    <a href="{{ route('admin.roles.create') }}" class=" btn-primary-custom text-light">
                         <i class="bi bi-plus-circle me-2 text-light"></i>Add New Role
                     </a>
                 </div>

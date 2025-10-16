@@ -194,7 +194,7 @@
                 </div>
 
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary-custom">
+                    <button type="submit" class=" btn-primary-custom">
                         <i class="bi bi-check-lg me-2"></i>Create Sequence
                     </button>
                     <a href="{{ route('admin.number-sequences.index') }}" class="btn btn-secondary">

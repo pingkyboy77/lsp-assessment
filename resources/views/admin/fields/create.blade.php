@@ -51,13 +51,12 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label for="code_2" class="form-label">Code 2 <span class="text-danger">*</span></label>
+                                    <label for="code_2" class="form-label">Scheme Code <span class="text-danger">*</span></label>
                                     <input type="text" 
                                            class="form-control @error('code_2') is-invalid @enderror" 
                                            id="code_2" 
                                            name="code_2" 
-                                           value="{{ old('code_2') }}" 
-                                           maxlength="10"
+                                           value="{{ old('code_2') }}"
                                            required>
                                     @error('code_2')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -117,16 +116,6 @@
                                     <div class="form-text">Kode akan otomatis diubah ke huruf kapital</div>
                                 </div>
 
-                                <div class="mb-3">
-                                    <label for="description" class="form-label">Deskripsi</label>
-                                    <textarea class="form-control @error('description') is-invalid @enderror" 
-                                              id="description" 
-                                              name="description" 
-                                              rows="4">{{ old('description') }}</textarea>
-                                    @error('description')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
 
                                 <div class="mb-3">
                                     <div class="form-check">

@@ -70,7 +70,6 @@ class MonitoringProfileController extends Controller
         try {
             $profile = UserProfile::with(['user'])->findOrFail($id);
 
-            // Ambil dokumen sekaligus dengan atribut tambahan dari accessor model
             $documents = UserDocument::where('user_id', $profile->user_id)->get();
 
             return view('admin.monitoringProfile.show', compact('profile', 'documents'));

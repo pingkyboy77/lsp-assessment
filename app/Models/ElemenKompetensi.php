@@ -22,6 +22,10 @@ class ElemenKompetensi extends Model
         'sort_order' => 'integer',
     ];
 
+    public function assessments()
+    {
+        return $this->hasMany(Apl02ElementAssessment::class, 'elemen_kompetensi_id');
+    }
     // Relationships
     public function unitKompetensi()
     {

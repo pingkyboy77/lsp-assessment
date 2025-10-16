@@ -239,7 +239,7 @@
                 
                 <div class="text-center">
                     <a href="{{ route('admin.certification-schemes.requirements', $scheme) }}" 
-                       class="btn btn-primary-custom btn-sm text-light" style="background: linear-gradient(135deg, #10b981, #059669);">
+                       class=" btn-primary-custom btn-sm text-light" style="background: linear-gradient(135deg, #10b981, #059669);">
                         <i class="bi bi-gear-fill me-2"></i>Kelola Requirements
                     </a>
                 </div>
@@ -248,7 +248,7 @@
                     <i class="bi bi-file-earmark-x display-4 text-muted mb-3"></i>
                     <h5 class="text-muted mb-3">Belum Ada Requirements</h5>
                     <a href="{{ route('admin.certification-schemes.requirements', $scheme) }}" 
-                       class="btn btn-primary-custom btn-sm text-light" style="background: linear-gradient(135deg, #10b981, #059669);">
+                       class=" btn-primary-custom btn-sm text-light" style="background: linear-gradient(135deg, #10b981, #059669);">
                         <i class="bi bi-plus-circle me-2"></i>Tambah Requirements
                     </a>
                 </div>
@@ -301,7 +301,7 @@
                 
                 <div class="text-center">
                     <a href="{{ route('admin.schemes.unit-kompetensi.index', $scheme) }}" 
-                       class="btn btn-primary-custom btn-sm text-light" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+                       class=" btn-primary-custom btn-sm text-light" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
                         <i class="bi bi-eye-fill me-2"></i>Lihat Semua Unit
                     </a>
                 </div>
@@ -310,7 +310,7 @@
                         <i class="bi bi-file-earmark-x display-4 text-muted mb-3"></i>
                         <h5 class="text-muted mb-3">Belum Ada Unit Kompetensi</h5>
                         <a href="{{ route('admin.schemes.unit-kompetensi.create', $scheme) }}" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);"
-                            class="btn btn-primary-custom btn-sm text-light">
+                            class=" btn-primary-custom btn-sm text-light">
                             <i class="bi bi-plus-circle me-1"></i>Tambah Unit Kompetensi
                         </a>
                     </div>
@@ -336,9 +336,9 @@
                                     <div class="flex-grow-1">
                                         <h6 class="fw-bold mb-2">{{ $kelompok->nama_kelompok }}</h6>
                                         <div class="d-flex align-items-center justify-content-between">
-                                            <span class="badge bg-warning-subtle text-warning">
+                                            {{-- <span class="badge bg-warning-subtle text-warning">
                                                 <i class="bi bi-folder me-1"></i>{{ $kelompok->active_bukti_count }} Bukti
-                                            </span>
+                                            </span> --}}
                                             <small class="text-muted">Aktif</small>
                                         </div>
                                     </div>
@@ -360,7 +360,7 @@
                 
                 <div class="text-center">
                     <a href="{{ route('admin.schemes.kelompok-kerja.index', $scheme) }}" 
-                       class="btn btn-primary-custom btn-sm text-light" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                       class=" btn-primary-custom btn-sm text-light" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
                         <i class="bi bi-eye-fill me-2"></i>Lihat Semua Kelompok
                     </a>
                 </div>
@@ -370,7 +370,7 @@
                     <h5 class="text-muted mb-3">Belum Ada Kelompok Kerja</h5>
                     <p class="text-muted mb-4">Buat kelompok kerja untuk mengorganisir bukti portofolio</p>
                     <a href="{{ route('admin.schemes.kelompok-kerja.create', $scheme) }}" 
-                       class="btn btn-primary-custom btn-sm text-light" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                       class=" btn-primary-custom btn-sm text-light" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
                         <i class="bi bi-plus-circle me-2"></i>Tambah Kelompok Kerja
                     </a>
                 </div>

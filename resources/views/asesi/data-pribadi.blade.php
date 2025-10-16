@@ -76,11 +76,18 @@
 
                         {{-- NIK --}}
                         <div class="col-md-12">
-                            <label for="nik" class="form-label fw-semibold">Nomor Identitas (KTP / Paspor) <span
-                                    class="text-danger">*</span></label>
+                            <label for="nik" class="form-label fw-semibold">
+                                Nomor Identitas (KTP / Paspor) <span class="text-danger">*</span>
+                            </label>
                             <input type="text" name="nik" id="nik"
-                                value="{{ old('nik', $profile->nik ?? '') }}"
+                                value="{{ old('nik', $userProfile->nik ?? (auth()->user()->id_number ?? '')) }}"
                                 class="form-control @error('nik') is-invalid @enderror" maxlength="16" required>
+
+
+                            <div id="nikWarning" class="text-danger small mt-1" style="display:none;">
+                                Nomor identitas harus tepat 16 digit.
+                            </div>
+
                             @error('nik')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -143,6 +150,7 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
                         {{-- No Telepon Rumah --}}
                         <div class="col-md-6">
                             <label for="no_telp_rumah" class="form-label fw-semibold">No. Telepon Rumah <span
@@ -172,30 +180,26 @@
                             <label for="email" class="form-label fw-semibold">Email <span
                                     class="text-danger">*</span></label>
                             <input type="email" name="email" id="email"
-                                value="{{ old('email', $profile->email ?? '') }}"
-                                class="form-control @error('email') is-invalid @enderror" required>
-                            @error('email')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                                value="{{ old('email', auth()->user()->email ?? '') }}" class="form-control" readonly>
                         </div>
+
+                        {{-- Pendidikan Terakhir --}}
                         <div class="col-md-6">
                             <label for="pendidikan_terakhir" class="form-label fw-semibold">Pendidikan Terakhir <span
                                     class="text-danger">*</span></label>
-                            <select class="form-select @error('pendidikan_terakhir') error @enderror"
-        name="pendidikan_terakhir" required>
-    <option value="">Pilih Pendidikan</option>
-    @foreach (['SD', 'SMP', 'SMA/SMK', 'Diploma', 'Sarjana', 'Magister', 'Doktor'] as $edu)
-        <option value="{{ $edu }}"
-            {{ old('pendidikan_terakhir', $profile->pendidikan_terakhir ?? '') == $edu ? 'selected' : '' }}>
-            {{ $edu }}
-        </option>
-    @endforeach
-</select>
-
-@error('pendidikan_terakhir')
-    <div class="error-message">{{ $message }}</div>
-@enderror
-
+                            <select class="form-select @error('pendidikan_terakhir') is-invalid @enderror"
+                                name="pendidikan_terakhir" id="pendidikan_terakhir" required>
+                                <option value="">Pilih Pendidikan</option>
+                                @foreach (['SD', 'SMP', 'SMA/SMK', 'Diploma', 'Sarjana', 'Magister', 'Doktor'] as $edu)
+                                    <option value="{{ $edu }}"
+                                        {{ old('pendidikan_terakhir', $profile->pendidikan_terakhir ?? '') == $edu ? 'selected' : '' }}>
+                                        {{ $edu }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('pendidikan_terakhir')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
 
                         {{-- Nama Sekolah Terakhir --}}
@@ -209,7 +213,9 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
                         <hr>
+
                         {{-- Alamat Rumah --}}
                         <div class="col-md-12">
                             <label for="alamat_rumah" class="form-label fw-semibold">Alamat Rumah <span
@@ -225,17 +231,17 @@
                         <div class="col-md-6">
                             <label for="kota_rumah" class="form-label fw-semibold">Kota <span
                                     class="text-danger">*</span></label>
-                            <select name="kota_rumah" id="kota_rumah" class="form-select">
-    <option value="">Pilih Kota</option>
-    @foreach ($cities as $city)
-        <option value="{{ $city->id }}" 
-                data-province-id="{{ $city->province->id }}"
-                data-province-name="{{ $city->province->name }}"
-                {{ old('kota_rumah', $profile->kota_rumah ?? '') == $city->id ? 'selected' : '' }}>
-            {{ $city->name }}
-        </option>
-    @endforeach
-</select>
+                            <select name="kota_rumah" id="kota_rumah"
+                                class="form-select @error('kota_rumah') is-invalid @enderror" required>
+                                <option value="">Pilih Kota</option>
+                                @foreach ($cities as $city)
+                                    <option value="{{ $city->id }}" data-province-id="{{ $city->province->id }}"
+                                        data-province-name="{{ $city->province->name }}"
+                                        {{ old('kota_rumah', $profile->kota_rumah ?? '') == $city->id ? 'selected' : '' }}>
+                                        {{ $city->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                             @error('kota_rumah')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -245,7 +251,6 @@
                         <div class="col-md-6">
                             <label for="provinsi_rumah" class="form-label fw-semibold">Provinsi <span
                                     class="text-danger">*</span></label>
-                            
                             <input type="hidden" id="provinsi_rumah" name="provinsi_rumah"
                                 value="{{ old('provinsi_rumah', $profile->provinsi_rumah ?? '') }}">
                             <input type="text" id="provinsi_rumah_display" class="form-control"
@@ -295,21 +300,22 @@
 
                         {{-- Kategori Pekerjaan --}}
                         <div class="col-12">
-    <label for="kategori_pekerjaan" class="form-label fw-semibold">Kategori Pekerjaan <span class="text-danger">*</span></label>
-    <select name="kategori_pekerjaan" id="kategori_pekerjaan"
-        class="form-select @error('kategori_pekerjaan') is-invalid @enderror" required>
-        <option value="">Pilih Kategori Pekerjaan</option>
-        @foreach (\App\Models\Pekerjaan::orderBy('kode')->get() as $pekerjaan)
-            <option value="{{ $pekerjaan->nama_pekerjaan }}"
-                {{ old('kategori_pekerjaan', $profile->kategori_pekerjaan ?? '') == $pekerjaan->nama_pekerjaan ? 'selected' : '' }}>
-                {{ $pekerjaan->nama_pekerjaan }}
-            </option>
-        @endforeach
-    </select>
-    @error('kategori_pekerjaan')
-        <div class="invalid-feedback">{{ $message }}</div>
-    @enderror
-</div>
+                            <label for="kategori_pekerjaan" class="form-label fw-semibold">Kategori Pekerjaan <span
+                                    class="text-danger">*</span></label>
+                            <select name="kategori_pekerjaan" id="kategori_pekerjaan"
+                                class="form-select @error('kategori_pekerjaan') is-invalid @enderror" required>
+                                <option value="">Pilih Kategori Pekerjaan</option>
+                                @foreach (\App\Models\Pekerjaan::orderBy('kode')->get() as $pekerjaan)
+                                    <option value="{{ $pekerjaan->nama_pekerjaan }}"
+                                        {{ old('kategori_pekerjaan', $profile->kategori_pekerjaan ?? '') == $pekerjaan->nama_pekerjaan ? 'selected' : '' }}>
+                                        {{ $pekerjaan->nama_pekerjaan }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('kategori_pekerjaan')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
 
                         {{-- Jabatan --}}
                         <div class="col-12">
@@ -322,7 +328,8 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        {{-- Nama Jalan --}}
+
+                        {{-- Alamat Kantor --}}
                         <div class="col-12">
                             <label for="nama_jalan_kantor" class="form-label fw-semibold">Alamat Kantor <span
                                     class="text-danger">*</span></label>
@@ -358,7 +365,6 @@
                         <div class="col-md-6">
                             <label for="provinsi_kantor" class="form-label fw-semibold">Provinsi <span
                                     class="text-danger">*</span></label>
-                            
                             <input type="hidden" id="provinsi_kantor" name="provinsi_kantor"
                                 value="{{ old('provinsi_kantor', $profile->provinsi_kantor ?? '') }}">
                             <input type="text" id="provinsi_kantor_display" class="form-control"
@@ -421,7 +427,7 @@
                 </div>
             </div>
 
-            {{-- DOCUMENTS SECTION WITH PREVIEW --}}
+            {{-- DOCUMENTS SECTION --}}
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-light border-0">
                     <h5 class="mb-0 text-dark">
@@ -444,8 +450,9 @@
                                 <div class="upload-card border rounded p-3 h-100 position-relative">
                                     <div class="d-flex align-items-center mb-3">
                                         <i class="bi {{ $doc['icon'] }} text-primary me-2 fs-5"></i>
-                                        <label class="form-label fw-semibold mb-0 fw-semibold">{{ $doc['label'] }} <span
-                                                class="text-danger">*</span></label>
+                                        <label class="form-label fw-semibold mb-0 fw-semibold">{{ $doc['label'] }}
+                                            <span class="text-danger">*</span>
+                                        </label>
                                     </div>
 
                                     {{-- File Input --}}
@@ -463,8 +470,8 @@
                                         style="display: none;">
                                         <div class="preview-content">
                                             <img id="img_{{ $key }}" class="preview-image"
-                                                style="display: none;">
-                                            <div id="pdf_{{ $key }}" class="pdf-preview"
+                                                style="display: none; max-width: 100%; height: 150px; object-fit: cover; border-radius: 5px;">
+                                            <div id="pdf_{{ $key }}" class="pdf-preview text-center"
                                                 style="display: none;">
                                                 <i class="bi bi-file-earmark-pdf text-danger fs-1"></i>
                                                 <p class="small text-muted mt-2">PDF File</p>
@@ -483,7 +490,7 @@
 
                                     {{-- Existing Document --}}
                                     @php
-                                        $existingDoc = $documents->where('jenis_dokumen', $key)->first();
+                                        $existingDoc = $documents->where('document_type', $key)->first();
                                     @endphp
 
                                     @if ($existingDoc)
@@ -492,13 +499,38 @@
                                                 <i class="bi bi-check-circle-fill me-1"></i>
                                                 File sudah diupload
                                             </small>
+                                            <div class="d-flex align-items-center gap-2 mt-2">
+                                                <small class="text-muted flex-grow-1">
+                                                    {{ $existingDoc->original_name ?? 'File uploaded' }}
+                                                    <br>
+                                                    <span
+                                                        class="badge bg-secondary">{{ $existingDoc->file_size_formatted ?? 'Unknown size' }}</span>
+                                                </small>
+                                            </div>
                                             <div class="d-flex gap-1 mt-2">
-                                                <a href="{{ route('asesi.data-pribadi.download', $existingDoc->id) }}"
-                                                    class="btn btn-outline-success btn-sm">
-                                                    <i class="bi bi-download"></i> Download
-                                                </a>
+                                                @if ($existingDoc->file_exists)
+                                                    <a href="{{ route('asesi.data-pribadi.download', $existingDoc->id) }}"
+                                                        class="btn btn-outline-success btn-sm">
+                                                        <i class="bi bi-download"></i> Download
+                                                    </a>
+                                                    @if ($existingDoc->isImage())
+                                                        <button type="button" class="btn btn-outline-info btn-sm"
+                                                            onclick="showImageModal('{{ $existingDoc->file_url }}', '{{ $existingDoc->original_name }}')">
+                                                            <i class="bi bi-eye"></i> Lihat
+                                                        </button>
+                                                    @elseif($existingDoc->mime_type === 'application/pdf')
+                                                        <button type="button" class="btn btn-outline-info btn-sm"
+                                                            onclick="showPdfModal('{{ $existingDoc->file_url }}', '{{ $existingDoc->original_name }}')">
+                                                            <i class="bi bi-file-pdf"></i> Preview PDF
+                                                        </button>
+                                                    @endif
+                                                @else
+                                                    <small class="text-warning">
+                                                        <i class="bi bi-exclamation-triangle"></i> File tidak ditemukan
+                                                    </small>
+                                                @endif
                                                 <button type="button" class="btn btn-outline-danger btn-sm"
-                                                    onclick="deleteDocument({{ $existingDoc->id }})">
+                                                    onclick="deleteDocument({{ $existingDoc->id }}, '{{ $doc['label'] }}')">
                                                     <i class="bi bi-trash"></i> Hapus
                                                 </button>
                                             </div>
@@ -506,11 +538,54 @@
                                     @endif
 
                                     <small class="text-muted d-block mt-2">
-                                        Format: PDF, JPG, PNG (Max: 2MB)
+                                        Format: PDF, JPG, PNG (Max: 5MB)
                                     </small>
                                 </div>
                             </div>
                         @endforeach
+                    </div>
+
+                    {{-- Image Preview Modal --}}
+                    <div class="modal fade" id="imagePreviewModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="imageModalTitle">Preview Gambar</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <img id="modalPreviewImage" src="" alt="Preview" class="img-fluid rounded">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- PDF Preview Modal --}}
+                    <div class="modal fade" id="pdfPreviewModal" tabindex="-1">
+                        <div class="modal-dialog modal-xl">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="pdfModalTitle">Preview PDF</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body p-0">
+                                    <iframe id="pdfViewer" src="" width="100%" height="700px"
+                                        frameborder="0">
+                                        <p>Browser Anda tidak mendukung iframe.
+                                            <a id="pdfDownloadLink" href="" target="_blank">Klik di sini untuk
+                                                membuka PDF</a>
+                                        </p>
+                                    </iframe>
+                                </div>
+                                <div class="modal-footer">
+                                    <a id="pdfDownloadBtn" href="" target="_blank" class="btn btn-success">
+                                        <i class="bi bi-download"></i> Download PDF
+                                    </a>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-bs-dismiss="modal">Tutup</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -551,94 +626,100 @@
             </div>
         </div>
     </div>
-
 @endsection
 
 @push('styles')
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+        rel="stylesheet" />
+
     <style>
-        /* Select2 Custom Styles */
-        .select2-container--bootstrap-5 .select2-selection {
-            border: 1px solid #ced4da;
-            border-radius: 0.375rem;
-            min-height: calc(1.5em + 0.75rem + 2px);
-        }
-        
-        .select2-container--bootstrap-5 .select2-selection--single {
-            height: calc(1.5em + 0.75rem + 2px) !important;
-        }
-        
-        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
-            padding-left: 0.75rem;
-            padding-right: 0.75rem;
-            color: #212529;
-            line-height: 1.5;
-        }
-        
-        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
-            height: calc(1.5em + 0.75rem);
-            right: 0.75rem;
-        }
-        
-        .select2-container--bootstrap-5.select2-container--focus .select2-selection,
-        .select2-container--bootstrap-5.select2-container--open .select2-selection {
-            border-color: #86b7fe;
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        }
-        
-        .select2-dropdown {
-            border: 1px solid #ced4da;
-            border-radius: 0.375rem;
-        }
-        
-        .select2-container--bootstrap-5 .select2-results__option--highlighted {
-            background-color: #0d6efd;
-            color: #fff;
-        }
-        
-        /* Error state for Select2 */
-        .is-invalid + .select2-container--bootstrap-5 .select2-selection {
-            border-color: #dc3545;
-        }
-        
-        .is-invalid + .select2-container--bootstrap-5.select2-container--focus .select2-selection,
-        .is-invalid + .select2-container--bootstrap-5.select2-container--open .select2-selection {
-            border-color: #dc3545;
-            box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
-        }<style>
-        .feature-icon {
-            width: 4rem;
-            height: 4rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-        }
-
-        .card {
-            transition: all 0.3s ease;
-        }
-
-        .card:hover {
-            /* transform: translateY(-2px); */
-        }
-
+        /* ==========================================================================
+                           FORM CONTROLS & LAYOUT
+                           ========================================================================== */
         .form-control:focus,
         .form-select:focus {
             border-color: #0d6efd;
             box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
         }
 
+        .card {
+            transition: all 0.3s ease;
+        }
+
+        /* ==========================================================================
+                           SELECT2 CUSTOM STYLING
+                           ========================================================================== */
+        .select2-container--bootstrap-5 .select2-selection {
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            min-height: calc(1.5em + 0.75rem + 2px);
+        }
+
+        .select2-container--bootstrap-5 .select2-selection--single {
+            height: calc(1.5em + 0.75rem + 2px) !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+            color: #212529;
+            line-height: 1.5;
+            text-transform: uppercase;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+            height: calc(1.5em + 0.75rem);
+            right: 0.75rem;
+        }
+
+        .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+        .select2-container--bootstrap-5.select2-container--open .select2-selection {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        .select2-dropdown {
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+        }
+
+        .select2-container--bootstrap-5 .select2-results__option {
+            text-transform: uppercase;
+        }
+
+        .select2-container--bootstrap-5 .select2-results__option--highlighted {
+            background-color: #0d6efd;
+            color: #fff;
+            text-transform: uppercase;
+        }
+
+        /* Error state for Select2 */
+        .is-invalid+.select2-container--bootstrap-5 .select2-selection {
+            border-color: #dc3545;
+        }
+
+        .is-invalid+.select2-container--bootstrap-5.select2-container--focus .select2-selection,
+        .is-invalid+.select2-container--bootstrap-5.select2-container--open .select2-selection {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+        }
+
+        /* ==========================================================================
+                           UPLOAD CARD STYLING
+                           ========================================================================== */
         .upload-card {
             border: 2px dashed #dee2e6 !important;
             transition: all 0.3s ease;
             min-height: 220px;
+            cursor: pointer;
         }
 
         .upload-card:hover {
             border-color: #0d6efd !important;
             background-color: #f8f9ff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
         }
 
         .upload-card.has-file {
@@ -647,12 +728,33 @@
             background-color: #f8fff9;
         }
 
+        .upload-card.border-primary {
+            border-width: 2px !important;
+            transform: scale(1.02);
+        }
+
+        /* ==========================================================================
+                           FILE PREVIEW STYLING
+                           ========================================================================== */
         .preview-container {
             text-align: center;
             padding: 15px;
             background: #f8f9fa;
             border-radius: 8px;
             border: 1px solid #dee2e6;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .preview-image {
@@ -675,14 +777,50 @@
 
         .existing-doc {
             border: 1px solid rgba(25, 135, 84, 0.2) !important;
+            transition: opacity 0.3s ease;
         }
 
-        .btn-group-sm .btn {
-            font-size: 0.75rem;
-            padding: 4px 8px;
+        /* ==========================================================================
+                           TEXT TRANSFORMATION RULES
+                           ========================================================================== */
+        /* Default uppercase for most text inputs */
+        input[type="text"],
+        input[type="tel"],
+        textarea,
+        select {
+            text-transform: uppercase;
         }
 
-        /* Responsive */
+        /* Keep email inputs lowercase */
+        input[type="email"],
+        input[type="email"].form-control {
+            text-transform: none !important;
+        }
+
+        input[type="email"]::placeholder {
+            text-transform: none;
+        }
+
+        /* Readonly fields remain uppercase */
+        input[readonly] {
+            text-transform: uppercase;
+        }
+
+        /* Placeholder styling */
+        .form-control::placeholder,
+        .form-select option[value=""]::after {
+            text-transform: none;
+            opacity: 0.7;
+        }
+
+        /* Override for specific fields that should remain normal case */
+        .normal-case {
+            text-transform: none !important;
+        }
+
+        /* ==========================================================================
+                           RESPONSIVE DESIGN
+                           ========================================================================== */
         @media (max-width: 768px) {
             .upload-card {
                 min-height: 200px;
@@ -693,238 +831,136 @@
             }
         }
 
-        .form-control, 
-.form-select option {
-    text-transform: uppercase;
-}
+        /* ==========================================================================
+                           UTILITY CLASSES
+                           ========================================================================== */
+        .btn-group-sm .btn {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+        }
 
-/* Specific styling for different input types */
-input[type="text"], 
-input[type="email"], 
-input[type="tel"], 
-textarea, 
-select {
-    text-transform: uppercase;
-}
-
-/* Keep email inputs lowercase for better functionality */
-input[type="email"] {
-    text-transform: lowercase;
-}
-
-/* Select2 dropdown options */
-.select2-container--bootstrap-5 .select2-selection__rendered,
-.select2-results__option {
-    text-transform: uppercase;
-}
-
-/* Exception for readonly fields (like province display) */
-input[readonly] {
-    text-transform: uppercase;
-}
-
-/* Placeholder text styling */
-.form-control::placeholder,
-.form-select option[value=""]::after {
-    text-transform: none;
-    opacity: 0.7;
-}
-
-/* Override for specific fields that should remain normal case if needed */
-.normal-case {
-    text-transform: none !important;
-}
-
-/* Select2 custom uppercase styling */
-.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
-    text-transform: uppercase;
-}
-
-.select2-container--bootstrap-5 .select2-results__option {
-    text-transform: uppercase;
-}
-
-.select2-container--bootstrap-5 .select2-results__option--highlighted {
-    text-transform: uppercase;
-}
+        .feature-icon {
+            width: 4rem;
+            height: 4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
     </style>
 @endpush
 
 @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <script>
+        /**
+         * ==========================================================================
+         * MAIN INITIALIZATION
+         * ==========================================================================
+         */
         $(document).ready(function() {
-            // Initialize Select2 for city dropdowns
             initializeSelect2();
-            
-            // Initialize city/province handlers
             initializeCityProvinceHandlers();
-            
-            // Initialize other form handlers
             initializeFormHandlers();
-            
-             initializeUppercaseInputs();
+            initializeUppercaseInputs();
+            initializeDragAndDrop();
         });
 
+        /**
+         * ==========================================================================
+         * SELECT2 INITIALIZATION
+         * ==========================================================================
+         */
         function initializeSelect2() {
-            // Initialize Select2 for city dropdowns
-            $('#kota_rumah').select2({
+            const select2Config = {
                 theme: 'bootstrap-5',
-                placeholder: 'Pilih Kota',
                 allowClear: true,
                 width: '100%'
+            };
+
+            $('#kota_rumah').select2({
+                ...select2Config,
+                placeholder: 'Pilih Kota'
             });
 
             $('#kota_kantor').select2({
-                theme: 'bootstrap-5',
-                placeholder: 'Pilih Kota',
-                allowClear: true,
-                width: '100%'
+                ...select2Config,
+                placeholder: 'Pilih Kota'
             });
 
-            // Initialize Select2 for kategori pekerjaan
             $('#kategori_pekerjaan').select2({
-                theme: 'bootstrap-5',
-                placeholder: 'Pilih Kategori Pekerjaan',
-                allowClear: true,
-                width: '100%'
+                ...select2Config,
+                placeholder: 'Pilih Kategori Pekerjaan'
             });
 
-            // Initialize Select2 for pendidikan terakhir
             $('#pendidikan_terakhir').select2({
-                theme: 'bootstrap-5',
-                placeholder: 'Pilih Pendidikan',
-                allowClear: true,
-                width: '100%'
+                ...select2Config,
+                placeholder: 'Pilih Pendidikan'
             });
         }
 
-        // City/Province Auto-fill functionality for both home and office
+        /**
+         * ==========================================================================
+         * CITY/PROVINCE HANDLERS
+         * ==========================================================================
+         */
         function initializeCityProvinceHandlers() {
-            // Handler for home address
+            // Home address city/province handler
             $('#kota_rumah').on('change', function() {
-                const selectedOption = $(this).find('option:selected');
-                const provinceId = selectedOption.data('province-id');
-                const provinceName = selectedOption.data('province-name');
-                
-                if (provinceId && provinceName) {
-                    $('#provinsi_rumah').val(provinceId);
-                    $('#provinsi_rumah_display').val(provinceName);
-                } else {
-                    $('#provinsi_rumah').val('');
-                    $('#provinsi_rumah_display').val('');
-                }
+                updateProvinceField(this, 'rumah');
             });
 
-            // Handler for office address
+            // Office address city/province handler
             $('#kota_kantor').on('change', function() {
-                const selectedOption = $(this).find('option:selected');
-                const provinceId = selectedOption.data('province-id');
-                const provinceName = selectedOption.data('province-name');
-                
-                if (provinceId && provinceName) {
-                    $('#provinsi_kantor').val(provinceId);
-                    $('#provinsi_kantor_display').val(provinceName);
-                } else {
-                    $('#provinsi_kantor').val('');
-                    $('#provinsi_kantor_display').val('');
-                }
+                updateProvinceField(this, 'kantor');
             });
 
-            // Initialize on page load if values already selected
-            if ($('#kota_rumah').val()) {
-                $('#kota_rumah').trigger('change');
-            }
-            if ($('#kota_kantor').val()) {
-                $('#kota_kantor').trigger('change');
+            // Initialize province fields on page load
+            updateProvinceOnLoad('kota_rumah', 'rumah');
+            updateProvinceOnLoad('kota_kantor', 'kantor');
+        }
+
+        function updateProvinceField(citySelect, type) {
+            const selectedOption = citySelect.options[citySelect.selectedIndex];
+            const provinceId = selectedOption.getAttribute('data-province-id');
+            const provinceName = selectedOption.getAttribute('data-province-name');
+
+            if (provinceId && provinceName) {
+                document.getElementById(`provinsi_${type}`).value = provinceId;
+                document.getElementById(`provinsi_${type}_display`).value = provinceName.toUpperCase();
+            } else {
+                document.getElementById(`provinsi_${type}`).value = '';
+                document.getElementById(`provinsi_${type}_display`).value = '';
             }
         }
 
+        function updateProvinceOnLoad(cityId, type) {
+            const citySelect = document.getElementById(cityId);
+            if (citySelect && citySelect.value) {
+                updateProvinceField(citySelect, type);
+            }
+        }
+
+        /**
+         * ==========================================================================
+         * FORM HANDLERS
+         * ==========================================================================
+         */
         function initializeFormHandlers() {
-            // File Preview Function
-            window.previewFile = function(input, type) {
-                const file = input.files[0];
-                const previewContainer = document.getElementById(`preview_${type}`);
-                const uploadCard = input.closest('.upload-card');
+            initializeInputFormatters();
+            initializeFormSubmissionHandler();
 
-                if (file) {
-                    // Validate file size (2MB)
-                    if (file.size > 2 * 1024 * 1024) {
-                        alert('Ukuran file terlalu besar! Maksimal 2MB.');
-                        input.value = '';
-                        return;
-                    }
+            // Global functions for file handling
+            window.previewFile = previewFile;
+            window.removePreview = removePreview;
+            window.deleteDocument = deleteDocument;
+            window.showImageModal = showImageModal;
+            window.formatFileSize = formatFileSize;
+        }
 
-                    // Validate file type
-                    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-                    if (!allowedTypes.includes(file.type)) {
-                        alert('Format file tidak didukung! Gunakan PDF, JPG, atau PNG.');
-                        input.value = '';
-                        return;
-                    }
-
-                    // Show preview container
-                    previewContainer.style.display = 'block';
-                    uploadCard.classList.add('has-file');
-
-                    // Update file info
-                    document.getElementById(`filename_${type}`).textContent = file.name;
-                    document.getElementById(`filesize_${type}`).textContent = formatFileSize(file.size);
-
-                    if (file.type.startsWith('image/')) {
-                        // Show image preview
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            const img = document.getElementById(`img_${type}`);
-                            img.src = e.target.result;
-                            img.style.display = 'block';
-                            document.getElementById(`pdf_${type}`).style.display = 'none';
-                        };
-                        reader.readAsDataURL(file);
-                    } else if (file.type === 'application/pdf') {
-                        // Show PDF preview
-                        document.getElementById(`img_${type}`).style.display = 'none';
-                        document.getElementById(`pdf_${type}`).style.display = 'block';
-                    }
-                }
-            };
-
-            // Remove Preview Function
-            window.removePreview = function(type) {
-                const input = document.querySelector(`input[name="documents[${type}]"]`);
-                const previewContainer = document.getElementById(`preview_${type}`);
-                const uploadCard = input.closest('.upload-card');
-
-                input.value = '';
-                previewContainer.style.display = 'none';
-                uploadCard.classList.remove('has-file');
-
-                // Clear preview content
-                document.getElementById(`img_${type}`).src = '';
-                document.getElementById(`img_${type}`).style.display = 'none';
-                document.getElementById(`pdf_${type}`).style.display = 'none';
-            };
-
-            // Delete Document Function
-            window.deleteDocument = function(documentId) {
-                const deleteForm = document.getElementById('deleteForm');
-                if (deleteForm) {
-                    deleteForm.action = `/data-pribadi/document/${documentId}`;
-                    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-                    deleteModal.show();
-                }
-            };
-
-            // Format File Size
-            window.formatFileSize = function(bytes) {
-                if (bytes === 0) return '0 Bytes';
-                const k = 1024;
-                const sizes = ['Bytes', 'KB', 'MB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-            };
-
-            // Auto format NIK input
+        function initializeInputFormatters() {
+            // NIK formatter - digits only, max 16 characters
             const nikInput = document.getElementById('nik');
             if (nikInput) {
                 nikInput.addEventListener('input', function(e) {
@@ -936,18 +972,19 @@ input[readonly] {
                 });
             }
 
-            // Auto format phone numbers
+            // Phone number formatters
             ['no_telp_rumah', 'no_hp', 'no_telp_kantor'].forEach(id => {
                 const element = document.getElementById(id);
                 if (element) {
                     element.addEventListener('input', function(e) {
+                        // Allow digits, hyphens, plus, parentheses, and spaces
                         let value = e.target.value.replace(/[^\d\-\+\(\)\s]/g, '');
                         e.target.value = value;
                     });
                 }
             });
 
-            // Auto format postal code
+            // Postal code formatters
             ['kode_pos', 'kode_pos_kantor'].forEach(id => {
                 const element = document.getElementById(id);
                 if (element) {
@@ -960,71 +997,362 @@ input[readonly] {
                     });
                 }
             });
+        }
 
-            // Form submission loading state
-            const form = document.querySelector('form');
+        function initializeFormSubmissionHandler() {
+            const form = document.querySelector('form[action*="data-pribadi.store"]');
             if (form) {
                 form.addEventListener('submit', function(e) {
-                    const submitBtn = document.querySelector('button[type="submit"]');
+                    const submitBtn = form.querySelector('button[type="submit"]');
                     if (submitBtn) {
                         submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Menyimpan...';
                         submitBtn.disabled = true;
+
+                        // Re-enable after timeout to prevent permanent lock
+                        setTimeout(() => {
+                            if (submitBtn.disabled) {
+                                submitBtn.innerHTML = '<i class="bi bi-save me-2"></i>Simpan Data';
+                                submitBtn.disabled = false;
+                            }
+                        }, 10000);
                     }
                 });
             }
+        }
 
-            // Add this to your existing initializeFormHandlers() function or create a new function
+        /**
+         * ==========================================================================
+         * FILE HANDLING FUNCTIONS
+         * ==========================================================================
+         */
+        function previewFile(input, type) {
+            const file = input.files[0];
+            const previewContainer = document.getElementById(`preview_${type}`);
+            const uploadCard = input.closest('.upload-card');
 
-function initializeUppercaseInputs() {
-    // Function to convert input to uppercase on keyup
-    const inputsToUppercase = [
-        'input[name="nama_lengkap"]',
-        'input[name="nik"]', 
-        'input[name="tempat_lahir"]',
-        'input[name="kebangsaan"]',
-        'input[name="no_telp_rumah"]',
-        'input[name="no_hp"]',
-        'input[name="nama_sekolah_terakhir"]',
-        'input[name="kode_pos"]',
-        'input[name="nama_tempat_kerja"]',
-        'input[name="jabatan"]',
-        'input[name="nama_jalan_kantor"]',
-        'input[name="kode_pos_kantor"]',
-        'input[name="no_telp_kantor"]',
-        'textarea[name="alamat_rumah"]'
-    ];
+            if (!file) return;
 
-    inputsToUppercase.forEach(selector => {
-        $(selector).on('input keyup', function() {
-            const cursorPosition = this.selectionStart;
-            this.value = this.value.toUpperCase();
-            this.setSelectionRange(cursorPosition, cursorPosition);
-        });
-    });
-
-    // Handle existing values on page load
-    inputsToUppercase.forEach(selector => {
-        $(selector).each(function() {
-            if (this.value && this.value.trim() !== '') {
-                this.value = this.value.toUpperCase();
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Ukuran file terlalu besar! Maksimal 5MB.');
+                input.value = '';
+                return;
             }
-        });
-    });
 
-    // Form submission handler
-    const form = document.querySelector('form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            const inputs = form.querySelectorAll('input[type="text"]:not([name="email"]):not([type="date"]), textarea');
-            inputs.forEach(input => {
-                if (input.name !== 'email' && !input.hasAttribute('readonly')) {
-                    input.value = input.value.toUpperCase();
+            // Validate file type
+            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('Format file tidak didukung! Gunakan PDF, JPG, atau PNG.');
+                input.value = '';
+                return;
+            }
+
+            // Show preview
+            previewContainer.style.display = 'block';
+            uploadCard.classList.add('has-file');
+
+            // Update file info
+            document.getElementById(`filename_${type}`).textContent = file.name;
+            document.getElementById(`filesize_${type}`).textContent = formatFileSize(file.size);
+
+            if (file.type.startsWith('image/')) {
+                showImagePreview(file, type);
+            } else if (file.type === 'application/pdf') {
+                showPdfPreview(type);
+            }
+
+            // Fade existing document info
+            const existingDoc = uploadCard.querySelector('.existing-doc');
+            if (existingDoc) {
+                existingDoc.style.opacity = '0.5';
+                existingDoc.style.transition = 'opacity 0.3s ease';
+            }
+        }
+
+        function showImagePreview(file, type) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById(`img_${type}`);
+                img.src = e.target.result;
+                img.style.display = 'block';
+                document.getElementById(`pdf_${type}`).style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showPdfPreview(type) {
+            document.getElementById(`img_${type}`).style.display = 'none';
+            document.getElementById(`pdf_${type}`).style.display = 'block';
+        }
+
+        function removePreview(type) {
+            const input = document.querySelector(`input[name="documents[${type}]"]`);
+            const previewContainer = document.getElementById(`preview_${type}`);
+            const uploadCard = input.closest('.upload-card');
+
+            // Clear input and hide preview
+            input.value = '';
+            previewContainer.style.display = 'none';
+            uploadCard.classList.remove('has-file');
+
+            // Clear preview elements
+            const img = document.getElementById(`img_${type}`);
+            const pdf = document.getElementById(`pdf_${type}`);
+
+            if (img) {
+                img.src = '';
+                img.style.display = 'none';
+            }
+            if (pdf) {
+                pdf.style.display = 'none';
+            }
+
+            // Restore existing document info
+            const existingDoc = uploadCard.querySelector('.existing-doc');
+            if (existingDoc) {
+                existingDoc.style.opacity = '1';
+                existingDoc.style.transition = 'opacity 0.3s ease';
+            }
+        }
+
+        function deleteDocument(documentId, docLabel) {
+            if (!confirm(`Apakah Anda yakin ingin menghapus dokumen ${docLabel || 'ini'}?`)) {
+                return;
+            }
+
+            // Create and submit delete form
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/asesi/data-pribadi/document/${documentId}/delete`;
+            form.style.display = 'none';
+
+            // Add CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                document.querySelector('input[name="_token"]')?.value;
+
+            if (csrfToken) {
+                const csrfField = document.createElement('input');
+                csrfField.type = 'hidden';
+                csrfField.name = '_token';
+                csrfField.value = csrfToken;
+                form.appendChild(csrfField);
+            }
+
+            // Add DELETE method
+            const methodField = document.createElement('input');
+            methodField.type = 'hidden';
+            methodField.name = '_method';
+            methodField.value = 'DELETE';
+            form.appendChild(methodField);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function showImageModal(imageUrl, imageName) {
+            const modal = document.getElementById('imagePreviewModal');
+            if (!modal) return;
+
+            const modalInstance = new bootstrap.Modal(modal);
+            const modalImage = document.getElementById('modalPreviewImage');
+            const modalTitle = document.getElementById('imageModalTitle');
+
+            if (modalImage) modalImage.src = imageUrl;
+            if (modalTitle) modalTitle.textContent = imageName || 'Preview Gambar';
+
+            modalInstance.show();
+        }
+
+        function showPdfModal(pdfUrl, fileName) {
+            const modal = document.getElementById('pdfPreviewModal');
+            if (!modal) return;
+
+            const modalInstance = new bootstrap.Modal(modal);
+            const pdfViewer = document.getElementById('pdfViewer');
+            const modalTitle = document.getElementById('pdfModalTitle');
+            const downloadBtn = document.getElementById('pdfDownloadBtn');
+            const downloadLink = document.getElementById('pdfDownloadLink');
+
+            if (pdfViewer) pdfViewer.src = pdfUrl;
+            if (modalTitle) modalTitle.textContent = fileName || 'Preview PDF';
+            if (downloadBtn) downloadBtn.href = pdfUrl;
+            if (downloadLink) downloadLink.href = pdfUrl;
+
+            modalInstance.show();
+
+            // Clear iframe src when modal closes to stop loading
+            modal.addEventListener('hidden.bs.modal', function() {
+                if (pdfViewer) pdfViewer.src = 'about:blank';
+            }, {
+                once: true
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        /**
+         * ==========================================================================
+         * DRAG AND DROP FUNCTIONALITY
+         * ==========================================================================
+         */
+        function initializeDragAndDrop() {
+            const uploadCards = document.querySelectorAll('.upload-card');
+
+            uploadCards.forEach(card => {
+                const input = card.querySelector('input[type="file"]');
+                if (!input) return;
+
+                // Make card clickable - simple approach
+                card.addEventListener('click', function(e) {
+                    if (!e.target.closest('button, a, .btn, input[type="file"]')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        input.click();
+                    }
+                });
+
+                // Drag and drop handlers
+                card.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    card.classList.add('border-primary', 'bg-light');
+                });
+
+                card.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    card.classList.remove('border-primary', 'bg-light');
+                });
+
+                card.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    card.classList.remove('border-primary', 'bg-light');
+
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        input.files = files;
+                        input.dispatchEvent(new Event('change', {
+                            bubbles: true
+                        }));
+                    }
+                });
+            });
+        }
+
+        /**
+         * ==========================================================================
+         * TEXT CASE TRANSFORMATION
+         * ==========================================================================
+         */
+        function initializeUppercaseInputs() {
+            // Define inputs that should be uppercase
+            const uppercaseSelectors = [
+                'input[name="nama_lengkap"]',
+                'input[name="nik"]',
+                'input[name="tempat_lahir"]',
+                'input[name="kebangsaan"]',
+                'input[name="no_telp_rumah"]',
+                'input[name="no_hp"]',
+                'input[name="nama_sekolah_terakhir"]',
+                'input[name="nama_tempat_kerja"]',
+                'input[name="jabatan"]',
+                'input[name="nama_jalan_kantor"]',
+                'input[name="no_telp_kantor"]',
+                'textarea[name="alamat_rumah"]'
+            ];
+
+            uppercaseSelectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
+                    setupUppercaseInput(element);
+                });
+            });
+
+            // Special handling for email (lowercase)
+            const emailInput = document.querySelector('input[name="email"]');
+            if (emailInput) {
+                setupLowercaseInput(emailInput);
+            }
+        }
+
+        function setupUppercaseInput(element) {
+            // Convert existing value
+            if (element.value && element.value.trim() !== '') {
+                element.value = element.value.toUpperCase();
+            }
+
+            // Handle input events
+            element.addEventListener('input', function() {
+                const cursorPosition = this.selectionStart;
+                const oldValue = this.value;
+                const newValue = oldValue.toUpperCase();
+
+                if (oldValue !== newValue) {
+                    this.value = newValue;
+                    this.setSelectionRange(cursorPosition, cursorPosition);
+                }
+            });
+
+            // Handle paste events
+            element.addEventListener('paste', function() {
+                setTimeout(() => {
+                    const cursorPosition = this.selectionStart;
+                    this.value = this.value.toUpperCase();
+                    this.setSelectionRange(cursorPosition, cursorPosition);
+                }, 1);
+            });
+        }
+
+        function setupLowercaseInput(element) {
+            // Handle input events
+            element.addEventListener('input', function() {
+                const cursorPosition = this.selectionStart;
+                const oldValue = this.value;
+                const newValue = oldValue.toLowerCase();
+
+                if (oldValue !== newValue) {
+                    this.value = newValue;
+                    this.setSelectionRange(cursorPosition, cursorPosition);
+                }
+            });
+
+            // Handle form submission
+            const form = element.closest('form');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    element.value = element.value.toLowerCase();
+                });
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const nikInput = document.getElementById('nik');
+            const nikWarning = document.getElementById('nikWarning');
+
+            nikInput.addEventListener('input', function() {
+                // Hapus karakter non-digit
+                this.value = this.value.replace(/\D/g, '');
+
+                // Tampilkan warning jika panjangnya bukan 16
+                if (this.value.length > 0 && this.value.length !== 16) {
+                    nikWarning.style.display = 'block';
+                } else {
+                    nikWarning.style.display = 'none';
+                }
+            });
+
+            // Validasi sebelum submit
+            nikInput.form.addEventListener('submit', function(e) {
+                if (nikInput.value.length !== 16) {
+                    e.preventDefault();
+                    nikWarning.style.display = 'block';
+                    nikInput.focus();
                 }
             });
         });
-    }
-}
-
-        }
     </script>
 @endpush

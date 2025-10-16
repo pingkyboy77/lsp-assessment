@@ -22,7 +22,7 @@
                     <p class="mb-0 text-muted">Manage system configuration and settings</p>
                 </div>
                 <div>
-                    <a href="{{ route('admin.system-settings.create') }}" class="btn btn-primary-custom text-light">
+                    <a href="{{ route('admin.system-settings.create') }}" class=" btn-primary-custom text-light">
                         <i class="bi bi-plus-circle me-2 text-light"></i>Add New Setting
                     </a>
                 </div>

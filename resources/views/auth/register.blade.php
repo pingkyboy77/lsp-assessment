@@ -27,17 +27,24 @@
 
         {{-- Identitas Number --}}
         <div class="mb-3">
-            <label for="id_number" class="form-label fw-medium">{{ __('ID Number (NIK / PASPOR / No MET)') }}</label>
-            <input id="id_number" class="form-control" type="text" name="id_number" value="{{ old('id_number') }}"
-                required autofocus autocomplete="id_number" />
-            @if ($errors->get('id_number'))
-                <div class="text-danger small mt-1">
-                    @foreach ($errors->get('id_number') as $error)
-                        <div>{{ $error }}</div>
-                    @endforeach
-                </div>
-            @endif
+            <label for="id_number" class="form-label fw-medium">
+                {{ __('ID Number (NIK / PASPOR / No MET)') }} <span class="text-danger">*</span>
+            </label>
+            <input id="id_number" type="text" name="id_number"
+                class="form-control @error('id_number') is-invalid @enderror" value="{{ old('id_number') }}"
+                placeholder="Enter 16-digit ID number" required minlength="16" maxlength="16" pattern="\d{16}"
+                inputmode="numeric" oninput="validateIDNumber(this)" autocomplete="off" autofocus>
+
+            <div id="idWarning" class="form-text text-danger d-none">
+                ID Number must be exactly 16 digits.
+            </div>
+
+            @error('id_number')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
         </div>
+
+
 
         <!-- Email -->
         <div class="mb-3">
@@ -92,6 +99,18 @@
                 </div>
             @endif
         </div>
+        <!-- reCAPTCHA -->
+        <div class="mb-3">
+            <div class="row">
+                <div class="col-12 d-flex justify-content-center">
+                    <div class="g-recaptcha" data-sitekey="{{ env('NOCAPTCHA_SITEKEY') }}"></div>
+                </div>
+            </div>
+            @if ($errors->has('g-recaptcha-response'))
+                <span class="text-danger small">{{ $errors->first('g-recaptcha-response') }}</span>
+            @endif
+        </div>
+
 
         <!-- Actions -->
         <div class="d-flex justify-content-between align-items-center mt-4">
@@ -106,6 +125,8 @@
     </form>
 
     @push('scripts')
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 const togglePassword = document.getElementById('togglePassword');
@@ -128,6 +149,16 @@
                     });
                 }
             });
+
+            function validateIDNumber(input) {
+                input.value = input.value.replace(/\D/g, '').slice(0, 16);
+                const warning = document.getElementById('idWarning');
+                if (input.value.length !== 16) {
+                    warning.classList.remove('d-none');
+                } else {
+                    warning.classList.add('d-none');
+                }
+            }
         </script>
     @endpush
 </x-guest-layout>

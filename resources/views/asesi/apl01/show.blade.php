@@ -508,9 +508,11 @@
                             @if ($apl->tanda_tangan_asesi)
                                 <div class="signature-display">
                                     <div class="signature-container border rounded p-3 bg-light">
-                                        <img src="{{ $apl->tanda_tangan_asesi }}"
-                                            alt="Tanda tangan {{ $apl->nama_lengkap }}" class="signature-image"
-                                            style="max-width: 200px; max-height: 100px;">
+                                        <img src="{{ asset('storage/' . $apl->tanda_tangan_asesi) }}"
+     alt="Tanda tangan {{ $apl->nama_lengkap }}"
+     class="signature-image"
+     style="max-width: 200px; max-height: 100px;">
+
                                     </div>
                                     @if ($apl->tanggal_tanda_tangan_asesi)
                                         <div class="signature-date text-muted mt-2">
@@ -557,12 +559,12 @@
                             </a>
                         @endif
 
-                        @if ($apl->status == 'submitted')
+                        {{-- @if ($apl->status == 'submitted')
                             <button type="button" class="btn btn-outline-primary" onclick="window.print()">
                                 <i class="bi bi-printer"></i>
                                 <span>Cetak</span>
                             </button>
-                        @endif
+                        @endif --}}
                     </div>
                 </div>
             </div>

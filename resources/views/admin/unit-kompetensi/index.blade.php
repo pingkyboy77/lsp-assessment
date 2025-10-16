@@ -73,7 +73,7 @@
                         <i class="bi bi-arrow-left me-2"></i> Kembali
                     </a>
                     <a href="{{ route('admin.schemes.unit-kompetensi.create', $scheme) }}"
-                        class="btn btn-primary-custom btn-sm text-light">
+                        class=" btn-primary-custom btn-sm text-light">
                         <i class="bi bi-plus-lg"></i> Tambah Unit Kompetensi
                     </a>
                 </div>
@@ -279,7 +279,7 @@
                         <h5 class="text-muted">Belum ada Unit Kompetensi</h5>
                         <p class="text-muted">Mulai dengan menambahkan unit kompetensi pertama untuk skema ini.</p>
                         <a href="{{ route('admin.schemes.unit-kompetensi.create', $scheme) }}"
-                            class="btn btn-primary-custom btn-sm text-light">
+                            class=" btn-primary-custom btn-sm text-light">
                             <i class="bi bi-plus-lg"></i> Tambah Unit Kompetensi
                         </a>
                     </div>
